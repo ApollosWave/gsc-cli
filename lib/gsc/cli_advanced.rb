@@ -417,8 +417,14 @@ module GSC
 
     # 10. SERP & Social Preview
     def self.handle_preview_command(target, options)
-      url = target || "https://#{Config.default_domain || 'example.com'}"
-      sp = GSC::SerpPreview.new(url)
+      is_url = target.to_s.start_with?('http://', 'https://')
+      url = options[:url] || (target if is_url)
+      title = options[:title] || (target unless is_url)
+      desc = options[:desc] || options[:description]
+
+      url ||= "https://#{Config.default_domain || 'example.com'}"
+
+      sp = GSC::SerpPreview.new(url, title: title, desc: desc)
       data = sp.generate
 
       if options[:json]
@@ -427,23 +433,135 @@ module GSC
       end
 
       puts BANNER unless options[:in_dashboard]
+      m = data[:metrics] || {}
+
       puts "🖥️ #{Color::BOLD}GOOGLE SERP PREVIEW (Desktop Viewport):#{Color::RESET}"
-      puts "┌─────────────────────────────────────────────────────────────┐"
-      puts "│ #{Color.c(data.dig(:desktop_serp, :breadcrumb), Color::DIM)}│"
-      puts "│ #{Color.c(data.dig(:desktop_serp, :title).ljust(59), Color::BLUE, Color::BOLD)}│"
-      puts "│ #{Color.c(data.dig(:desktop_serp, :snippet)[0..58].ljust(59), Color::DIM)}│"
-      puts "└─────────────────────────────────────────────────────────────┘"
-      if data[:truncation_risk]
-        puts Color.c("⚠️ Warning: Title exceeds 60 characters and may truncate with '...' on Google SERPs.", Color::YELLOW)
-      else
-        puts Color.c("✅ Title length is optimal (< 60 chars / ~580px).", Color::GREEN)
+      puts "┌─────────────────────────────────────────────────────────────────────────┐"
+      puts "│ #{Color.c(data.dig(:desktop_serp, :breadcrumb).to_s.ljust(71), Color::DIM)}│"
+      puts "│ #{Color.c(data.dig(:desktop_serp, :title).to_s.ljust(71), Color::BLUE, Color::BOLD)}│"
+      puts "│ #{Color.c(data.dig(:desktop_serp, :snippet).to_s[0..70].ljust(71), Color::DIM)}│"
+      puts "└─────────────────────────────────────────────────────────────────────────┘"
+
+      t_status = if m[:title_truncated]
+                   Color.c("⚠️ TRUNCATED (+#{(m[:title_pixel_est] - m[:title_desktop_limit]).round(1)}px over 580px limit)", Color::YELLOW, Color::BOLD)
+                 else
+                   Color.c('✅ OPTIMAL (< 580px desktop limit)', Color::GREEN, Color::BOLD)
+                 end
+
+      d_status = if m[:desc_truncated]
+                   Color.c("⚠️ TRUNCATED (+#{(m[:desc_pixel_est] - m[:desc_desktop_limit]).round(1)}px over 960px limit)", Color::YELLOW, Color::BOLD)
+                 else
+                   Color.c('✅ OPTIMAL (< 960px desktop limit)', Color::GREEN, Color::BOLD)
+                 end
+
+      puts "   • Title Width:       #{m[:title_chars]} chars / ~#{m[:title_pixel_est]}px  [#{t_status}]"
+      puts "   • Description Width: #{m[:desc_chars]} chars / ~#{m[:desc_pixel_est]}px  [#{d_status}]"
+
+      puts "\n📱 #{Color::BOLD}GOOGLE SERP PREVIEW (Mobile Viewport):#{Color::RESET}"
+      puts "┌─────────────────────────────────────────────────────────────────────────┐"
+      puts "│ #{Color.c(data.dig(:mobile_serp, :breadcrumb).to_s.ljust(71), Color::DIM)}│"
+      puts "│ #{Color.c(data.dig(:mobile_serp, :title).to_s.ljust(71), Color::BLUE, Color::BOLD)}│"
+      puts "│ #{Color.c(data.dig(:mobile_serp, :snippet).to_s[0..70].ljust(71), Color::DIM)}│"
+      puts "└─────────────────────────────────────────────────────────────────────────┘"
+
+      soc = data[:social] || {}
+      if soc[:og_title] || soc[:og_image]
+        puts "\n🌐 #{Color::BOLD}OPEN GRAPH / SOCIAL CARD PREVIEW:#{Color::RESET}"
+        puts "   • Title       : #{soc[:og_title]}"
+        puts "   • Description : #{soc[:og_description]}"
+        puts "   • Card Image  : #{soc[:og_image] || '(No og:image specified)'}"
+      end
+      puts ""
+    end
+
+    # 10b. IndexNow Multi-Engine Instant Indexing (Bing, Yandex, Seznam, Naver)
+    def self.handle_indexnow_command(target, extra, options)
+      if target == 'key' || target == 'connect'
+        if extra && !extra.strip.empty?
+          key = IndexNow.set_key(extra)
+          puts Color.c("✅ Successfully set IndexNow API key to: #{key}", Color::GREEN, Color::BOLD)
+        else
+          key = IndexNow.get_or_create_key
+          host = Config.default_domain || 'yourdomain.com'
+          puts "🔑 #{Color::BOLD}INDEXNOW API KEY & HOST SETUP:#{Color::RESET}"
+          puts "   • Active Key:          #{Color.c(key, Color::CYAN, Color::BOLD)}"
+          puts "   • Host Verification:   #{Color.c("https://#{host}/#{key}.txt", Color::BLUE)}"
+          puts "   • Required Content:    #{Color.c(key, Color::BOLD)}"
+          puts "\n💡 #{Color.c('Verification Tip:', Color::YELLOW)} Create a plain text file at the root of your web server named '#{key}.txt' with '#{key}' as the content."
+        end
+        return
       end
 
-      puts "\n📱 #{Color::BOLD}OPEN GRAPH / SOCIAL CARD PREVIEW:#{Color::RESET}"
-      soc = data[:social] || {}
-      puts "   • Title       : #{soc[:og_title]}"
-      puts "   • Description : #{soc[:og_description]}"
-      puts "   • Card Image  : #{soc[:og_image] || '(No og:image specified)'}"
+      if target == 'sitemap' || target.to_s.end_with?('.xml')
+        sitemap_target = (target == 'sitemap') ? extra : target
+        handle_indexnow_sitemap_command(sitemap_target, options)
+        return
+      end
+
+      target_url = target || options[:url]
+      unless target_url
+        if Config.default_domain
+          target_url = "https://#{Config.default_domain}"
+        else
+          raise 'Please provide a URL to index (e.g. gsc indexnow https://example.com/new-page) or connect a default domain.'
+        end
+      end
+
+      urls = [target_url]
+      urls << extra if extra && extra.start_with?('http')
+
+      key = options[:key] || IndexNow.get_or_create_key
+      res = IndexNow.submit(urls, key: key)
+
+      if options[:json]
+        puts JSON.pretty_generate(res)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "⚡ #{Color::BOLD}INDEXNOW MULTI-SEARCH ENGINE SUBMISSION:#{Color::RESET}"
+      puts "─" * 75
+      status_color = res[:success] ? Color::GREEN : Color::RED
+      puts "Status          : #{Color.c(res[:message], status_color, Color::BOLD)}"
+      puts "Submitted URLs  : #{Color.c(res[:submitted_urls].to_s, Color::CYAN, Color::BOLD)}"
+      puts "Host            : #{res[:host]}"
+      puts "Key Location    : #{res[:key_location]}"
+      puts "Engines Notified: #{Color.c('Microsoft Bing, Yandex, Seznam, Naver', Color::BOLD)}"
+      puts "─" * 75
+
+      urls.each_with_index do |u, idx|
+        puts "   #{idx + 1}. #{Color.c(u, Color::CYAN)}"
+      end
+
+      unless res[:success]
+        puts "\n#{Color.c('⚠️ Note:', Color::YELLOW)} Ensure you have created #{res[:key_location]} with content: #{res[:key]}"
+      end
+      puts ""
+    end
+
+    def self.handle_indexnow_sitemap_command(target, options)
+      sitemap = target || options[:sitemap] || 'sitemap.xml'
+      key = options[:key] || IndexNow.get_or_create_key
+      limit = options[:limit] ? options[:limit].to_i : nil
+
+      puts BANNER unless options[:in_dashboard]
+      puts "📄 #{Color::BOLD}BATCH INDEXNOW SITEMAP SUBMISSION:#{Color::RESET} #{Color.c(sitemap, Color::CYAN)}"
+      puts "─" * 75
+
+      res = IndexNow.submit_sitemap(sitemap, key: key, limit: limit)
+
+      if options[:json]
+        puts JSON.pretty_generate(res)
+        return
+      end
+
+      status_color = res[:success] ? Color::GREEN : Color::RED
+      puts "Status          : #{Color.c(res[:message], status_color, Color::BOLD)}"
+      puts "URLs Submitted  : #{Color.c(res[:submitted_urls].to_s, Color::GREEN, Color::BOLD)}"
+      puts "Host            : #{res[:host]}"
+      puts "Engines Notified: #{Color.c('Microsoft Bing, Yandex, Seznam, Naver', Color::BOLD)}"
+      puts "─" * 75
+      puts "✨ All URLs pushed to IndexNow instant crawl queue."
       puts ""
     end
 

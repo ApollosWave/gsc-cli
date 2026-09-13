@@ -37,4 +37,18 @@ class AdvancedFeaturesTest < Minitest::Test
     assert data.key?('sources')
     assert data.key?('targets')
   end
+
+  def test_indexnow_key_generation
+    key = GSC::IndexNow.generate_key
+    assert_equal 32, key.length
+    assert_match(/^[a-f0-9]{32}$/, key)
+  end
+
+  def test_serp_preview_calculation
+    sp = GSC::SerpPreview.new('https://example.com/flat-feet', title: 'Best Running Shoes for Flat Feet', desc: 'Find top-rated running shoes.')
+    res = sp.generate
+    assert_equal 'Best Running Shoes for Flat Feet', res[:title]
+    assert res[:metrics][:title_pixel_est] > 0
+    refute res[:metrics][:title_truncated]
+  end
 end

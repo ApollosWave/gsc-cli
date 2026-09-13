@@ -190,6 +190,18 @@ opts.on('--report PATH', 'Export comprehensive Markdown audit report (e.g. docs/
   options[:report] = path
 end
 
+opts.on('--title TITLE', 'Custom page title for SERP simulator') do |t|
+  options[:title] = t
+end
+
+opts.on('--desc DESC', 'Custom meta description for SERP simulator') do |d|
+  options[:desc] = d
+end
+
+opts.on('--key KEY', 'API key for IndexNow or service accounts') do |k|
+  options[:key] = k
+end
+
 opts.on('--dry-run', 'Simulate API calls without mutating data') do
           options[:dry_run] = true
         end
@@ -291,8 +303,18 @@ when 'llms', 'ai-ready'
   exit 0 unless options[:in_dashboard]
   return if options[:in_dashboard]
 
-when 'preview', 'serp-preview', 'social-preview'
+when 'preview', 'serp', 'serp-preview', 'social-preview'
   handle_preview_command(target, options)
+  exit 0 unless options[:in_dashboard]
+  return if options[:in_dashboard]
+
+when 'indexnow', 'in'
+  handle_indexnow_command(target, extra, options)
+  exit 0 unless options[:in_dashboard]
+  return if options[:in_dashboard]
+
+when 'indexnow-sitemap', 'ins'
+  handle_indexnow_sitemap_command(target, options)
   exit 0 unless options[:in_dashboard]
   return if options[:in_dashboard]
 
@@ -388,6 +410,8 @@ when 'version', '-v', '--version'
       when 'connect', 'setup', 'init', 'install'
         if target.to_s.downcase == 'ke' || target.to_s.downcase == 'keywordseverywhere'
           handle_connect_ke_wizard(extra)
+        elsif target.to_s.downcase == 'indexnow' || target.to_s.downcase == 'in'
+          handle_indexnow_command('connect', extra, options)
         else
           handle_connect_wizard
         end

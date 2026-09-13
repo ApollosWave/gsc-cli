@@ -9,6 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-Stripe-635BFF.svg?logo=stripe&logoColor=white)](#-sponsorship--backing)
 [![AI Agent Native](https://img.shields.io/badge/AI%20Agent-Native%20Skill-purple.svg)](#-ai-agent-native-integration-antigravity-claude-cursor)
+[![GitHub Stars](https://img.shields.io/github/stars/ApollosWave/gsc-cli?style=social)](https://github.com/ApollosWave/gsc-cli)
 
 ---
 
@@ -51,6 +52,8 @@ We built **`gsc-cli`** to run our own marketing. **We open-sourced it 100% free 
 - 💰 **Keywords Everywhere Dual Ingestion (Zero-Cost Clipboard & Headless API)**: Ingest free keyword tables directly from the Keywords Everywhere web dashboard via `gsc import clip` (zero credits required), or connect paid API keys for 1-step automated terminal lookups (`gsc ke`).
 - 📊 **Google Ads Planner Ingestion**: Ingest CSV exports from Google Ads Keyword Planner, calculate composite Opportunity Scores (0–100), and cross-correlate with live GSC rankings.
 - 🚀 **Instant Googlebot Re-Indexing**: Ping Google's Indexing API with `URL_UPDATED` or `URL_DELETED` for priority crawl queueing within seconds.
+- ⚡ **Multi-Engine IndexNow Protocol (`gsc indexnow`)**: Instantly submit pages and sitemaps across Microsoft Bing, Yandex, Seznam, and Naver simultaneously.
+- 🖥️ **Google SERP & Title Pixel Simulator (`gsc serp`)**: Simulate desktop (580px) and mobile (650px) Google SERP cards, calculate precise proportional pixel widths, and prevent truncation before publishing.
 - 🔍 **Live Google URL Inspection**: Direct Search Console API check for indexing verdict, assigned canonical URL, crawl timestamps, and robots.txt state.
 - 💀 **90-Day Zombie Page Detection**: Automatically scan XML sitemaps to find zero-impression deadweight URLs draining your Google crawl budget.
 - 🛡️ **Cannibalization & Decay Detection**: Spot internal URLs fighting for the same queries, and compare 28-day period-over-period traffic trends.
@@ -58,6 +61,14 @@ We built **`gsc-cli`** to run our own marketing. **We open-sourced it 100% free 
 - 📑 **Off-Page & On-Page SEO Merger (`gsc page`)**: Combines Detailed SEO Extension DOM inspection (title pixel width & SERP truncation, meta description, H1–H6 tree, missing alt attributes, canonicals, JSON-LD schema, OG/Twitter cards) with real Google Search Console 90-day search queries, clicks, and rankings.
 - 🕷️ **Autonomous Site Audit & Broken Link Repair (`gsc site-audit`)**: Crawls all sitemap URLs, checks HTTP response codes for dead internal links (404/500/timeouts), audits missing image alts and heading defects, and exports an AI-actionable Markdown fix sprint.
 - 🤖 **AI Agent Native**: Every single command supports `--json` for instantaneous programmatic consumption by AI agents.
+
+---
+
+> ### ⭐ Join the Zero-Bloat SEO Revolution
+> **Did `gsc-cli` save your team from 40 bloated Google gems, bypass the $300/mo SEO suite tax, or give your AI agents instant sub-50ms search ground truth?**  
+> 
+> Help fellow engineers and operators discover zero-dependency tooling:  
+> 👉 **[Drop a Star on GitHub](https://github.com/ApollosWave/gsc-cli)** — *even if you only use it for one-click Googlebot indexing or terminal keyword research.* It takes 2 seconds and directly fuels continuous open-source development!
 
 ---
 

@@ -57,12 +57,16 @@ COMMAND_REGISTRY = [
       { name: "sitemaps-list", shortcut: nil, desc: "List registered XML sitemaps in Search Console", flags: ["-d"] },
       { name: "sitemaps-submit <url>", shortcut: nil, desc: "Submit/register XML sitemap with Search Console", flags: ["-d"] },
       { name: "index-sitemap <file/url>", shortcut: nil, desc: "Batch notify Googlebot to index all sitemap URLs", flags: ["--delay", "--dry-run"] },
-      { name: "inspect-sitemap <file/url>", shortcut: nil, desc: "Bulk inspect indexation status for all sitemap URLs", flags: ["--delay"] }
+      { name: "inspect-sitemap <file/url>", shortcut: nil, desc: "Bulk inspect indexation status for all sitemap URLs", flags: ["--delay"] },
+      { name: "indexnow <url>", shortcut: "in", desc: "Instant indexing via IndexNow protocol (Bing, Yandex, Seznam, Naver)", flags: ["--key", "--json"] },
+      { name: "indexnow-sitemap <sitemap>", shortcut: "ins", desc: "Batch submit all sitemap URLs to IndexNow", flags: ["--key", "--limit", "--json"] },
+      { name: "connect indexnow [key]", shortcut: nil, desc: "Configure IndexNow API key and display verification file details", flags: [] }
     ]
   },
   {
     category: "Health, Diagnostics & Setup",
     commands: [
+      { name: "serp [url|title]", shortcut: "preview", desc: "Google SERP & Title Pixel Width Simulator (Desktop & Mobile)", flags: ["--title", "--desc", "--url", "--json"] },
       { name: "page <url|file>", shortcut: "pg", desc: "Detailed On-Page DOM + Off-Page GSC Performance Audit", flags: ["--check-links", "--json"] },
       { name: "site-audit [sitemap]", shortcut: "crl", desc: "Full site crawl, broken links (404/500), image alts & AI report", flags: ["--check-links", "--report", "--json"] },
       { name: "audit", shortcut: "a", desc: "360-degree Comprehensive SEO & GA4 health audit", flags: ["--days", "-d"] },

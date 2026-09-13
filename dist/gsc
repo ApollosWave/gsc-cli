@@ -40,7 +40,8 @@ module GSC
     GRAY      = "\e[90m"
 
     def self.c(text, *styles)
-      "#{styles.join}#{text}#{RESET}"
+      t = text.to_s.dup.force_encoding('UTF-8').scrub
+      "#{styles.join}#{t}#{RESET}"
     end
   end
 end
@@ -2356,6 +2357,1385 @@ module GSC
   end
 end
 
+# --- google_suggest.rb ---
+# encoding: utf-8
+require 'net/http'
+require 'uri'
+require 'json'
+
+module GSC
+  class GoogleSuggest
+    SUGGEST_URL = 'https://suggestqueries.google.com/complete/search'
+
+    attr_reader :query, :options
+
+    def initialize(query, options = {})
+      @query = query.to_s.strip
+      @options = options
+    end
+
+    def fetch(alphabet: false, questions: false)
+      if questions
+        fetch_questions
+      elsif alphabet
+        fetch_alphabet_soup
+      else
+        fetch_single(@query)
+      end
+    end
+
+    def fetch_single(search_term)
+      uri = URI("#{SUGGEST_URL}?client=chrome&q=#{URI.encode_www_form_component(search_term)}")
+      req = Net::HTTP::Get.new(uri)
+      req['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+      req['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 10) do |http|
+        http.request(req)
+      end
+
+      return [] unless res.code == '200'
+
+      parsed = JSON.parse(res.body.force_encoding('UTF-8'))
+      terms = parsed[1] || []
+      types = parsed[4] ? parsed[4]['google:suggesttype'] || [] : []
+
+      terms.map.with_index do |term, idx|
+        {
+          term: term,
+          type: types[idx] || 'QUERY',
+          root: search_term
+        }
+      end
+    rescue StandardError => e
+      []
+    end
+
+    def fetch_alphabet_soup
+      results = {}
+      base = @query.strip
+
+      # Root query first
+      results['root'] = fetch_single(base)
+
+      # A-Z permutations
+      ('a'..'z').each do |letter|
+        term = "#{base} #{letter}"
+        items = fetch_single(term)
+        results[letter] = items unless items.empty?
+        sleep(0.05) # Polite throttle
+      end
+
+      # 0-9 permutations if requested
+      if @options[:numbers]
+        ('0'..'9').each do |num|
+          term = "#{base} #{num}"
+          items = fetch_single(term)
+          results[num] = items unless items.empty?
+          sleep(0.05)
+        end
+      end
+
+      results
+    end
+
+    def fetch_questions
+      prefixes = [
+        'how to',
+        'how do',
+        'why do',
+        'why does',
+        'what is',
+        'what are',
+        'can you',
+        'best',
+        'where to',
+        'which'
+      ]
+
+      results = {}
+      prefixes.each do |pfx|
+        term = "#{pfx} #{@query}"
+        items = fetch_single(term)
+        results[pfx] = items unless items.empty?
+        sleep(0.05)
+      end
+
+      results
+    end
+  end
+end
+
+# --- open_page_rank.rb ---
+# encoding: utf-8
+require 'net/http'
+require 'uri'
+require 'json'
+
+module GSC
+  class OpenPageRank
+    API_URL = 'https://openpagerank.com/api/v1.0/getPageRank'
+
+    attr_reader :api_key
+
+    def initialize(api_key = nil)
+      @api_key = api_key || ENV['OPENPAGERANK_API_KEY'] || GSC::Config.get('opr_api_key')
+    end
+
+    def configured?
+      !@api_key.nil? && !@api_key.strip.empty?
+    end
+
+    def check_domains(domains)
+      domains = Array(domains).map { |d| clean_domain(d) }.reject(&:empty?).uniq
+      return { error: 'No valid domains provided' } if domains.empty?
+      return { error: 'OpenPageRank API key not configured. Set via `gsc config set opr_api_key <key>` or OPENPAGERANK_API_KEY env (Get free 300k calls/mo at openpagerank.com)' } unless configured?
+
+      # Construct query params: domains[0]=a.com&domains[1]=b.com
+      params = domains.map.with_index { |d, idx| "domains%5B#{idx}%5D=#{URI.encode_www_form_component(d)}" }.join('&')
+      uri = URI("#{API_URL}?#{params}")
+
+      req = Net::HTTP::Get.new(uri)
+      req['API-OPR'] = @api_key
+      req['User-Agent'] = 'gsc-cli/2.1'
+
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 15) do |http|
+        http.request(req)
+      end
+
+      if res.code == '200'
+        data = JSON.parse(res.body)
+        records = (data['response'] || []).map do |r|
+          {
+            domain: r['domain'],
+            page_rank_decimal: r['page_rank_decimal'] || 0.0,
+            page_rank_integer: r['page_rank_integer'] || 0,
+            rank: r['rank'],
+            status_code: r['status_code']
+          }
+        end
+        {
+          status: 'success',
+          status_code: data['status_code'],
+          records: records
+        }
+      else
+        {
+          status: 'error',
+          code: res.code.to_i,
+          message: res.body
+        }
+      end
+    rescue StandardError => e
+      { status: 'error', message: e.message }
+    end
+
+    def clean_domain(input)
+      d = input.to_s.strip.downcase
+      d = d.sub(%r{^https?://}, '').sub(%r{/.*$}, '').sub(/^www\./, '')
+      d
+    end
+  end
+end
+
+# --- page_speed.rb ---
+# encoding: utf-8
+require 'net/http'
+require 'uri'
+require 'json'
+
+module GSC
+  class PageSpeed
+    API_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed'
+
+    attr_reader :url, :strategy, :api_key
+
+    def initialize(url, strategy: 'mobile', api_key: nil)
+      @url = url.to_s.strip
+      @strategy = strategy.to_s.downcase == 'desktop' ? 'desktop' : 'mobile'
+      @api_key = api_key || ENV['PAGESPEED_API_KEY'] || GSC::Config.get('pagespeed_api_key')
+    end
+
+    def run
+      query_params = [
+        "url=#{URI.encode_www_form_component(@url)}",
+        "strategy=#{@strategy}",
+        "category=performance",
+        "category=seo"
+      ]
+      query_params << "key=#{URI.encode_www_form_component(@api_key)}" if @api_key && !@api_key.empty?
+
+      uri = URI("#{API_URL}?#{query_params.join('&')}")
+      req = Net::HTTP::Get.new(uri)
+      req['User-Agent'] = 'gsc-cli/2.1'
+
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 30) do |http|
+        http.request(req)
+      end
+
+      if res.code == '200'
+        parse_response(JSON.parse(res.body))
+      else
+        {
+          error: true,
+          status_code: res.code.to_i,
+          message: res.body
+        }
+      end
+    rescue StandardError => e
+      { error: true, message: e.message }
+    end
+
+    private
+
+    def parse_response(data)
+      lhr = data['lighthouseResult'] || {}
+      categories = lhr['categories'] || {}
+      perf_score = ((categories.dig('performance', 'score') || 0) * 100).round
+      seo_score = ((categories.dig('seo', 'score') || 0) * 100).round
+
+      audits = lhr['audits'] || {}
+
+      # Core Web Vitals
+      fcp = audits.dig('first-contentful-paint', 'displayValue')
+      lcp = audits.dig('largest-contentful-paint', 'displayValue')
+      cls = audits.dig('cumulative-layout-shift', 'displayValue')
+      tbt = audits.dig('total-blocking-time', 'displayValue')
+      si  = audits.dig('speed-index', 'displayValue')
+
+      # CrUX Field Data (if available)
+      crux_metrics = {}
+      crux = data.dig('loadingExperience', 'metrics') || {}
+      crux.each do |k, v|
+        crux_metrics[k] = {
+          percentile: v['percentile'],
+          category: v['category']
+        }
+      end
+
+      # Opportunities
+      opportunities = []
+      audits.each do |k, v|
+        next unless v['details'] && v['details']['type'] == 'opportunity'
+        next unless v['numericValue'] && v['numericValue'] > 100
+
+        opportunities << {
+          id: k,
+          title: v['title'],
+          savings_ms: v['numericValue'] ? v['numericValue'].round : 0,
+          display: v['displayValue']
+        }
+      end
+      opportunities.sort_by! { |o| -o[:savings_ms] }
+
+      {
+        url: @url,
+        strategy: @strategy,
+        fetch_time: lhr['fetchTime'],
+        performance_score: perf_score,
+        seo_score: seo_score,
+        metrics: {
+          fcp: fcp,
+          lcp: lcp,
+          cls: cls,
+          tbt: tbt,
+          speed_index: si
+        },
+        field_data: crux_metrics,
+        opportunities: opportunities.first(5)
+      }
+    end
+  end
+end
+
+# --- page_comparator.rb ---
+# encoding: utf-8
+module GSC
+  class PageComparator
+    attr_reader :url1, :url2, :data1, :data2
+
+    def initialize(url1, url2)
+      @url1 = url1
+      @url2 = url2
+    end
+
+    def compare
+      pa1 = GSC::PageAnalyzer.new(@url1)
+      pa2 = GSC::PageAnalyzer.new(@url2)
+
+      @data1 = pa1.fetch_and_analyze
+      @data2 = pa2.fetch_and_analyze
+
+      diffs = {
+        meta: compare_meta,
+        headings: compare_headings,
+        images: compare_images,
+        links: compare_links,
+        performance: compare_perf,
+        structured_data: compare_schema
+      }
+
+      {
+        page1: { url: @url1, status: @data1[:http_status] },
+        page2: { url: @url2, status: @data2[:http_status] },
+        comparison: diffs
+      }
+    end
+
+    private
+
+    def compare_meta
+      t1 = @data1.dig(:title, :text) || ''
+      t2 = @data2.dig(:title, :text) || ''
+      m1 = @data1.dig(:meta_description, :text) || ''
+      m2 = @data2.dig(:meta_description, :text) || ''
+
+      {
+        title: {
+          page1: { text: t1, length: t1.length, optimal: t1.length.between?(30, 60) },
+          page2: { text: t2, length: t2.length, optimal: t2.length.between?(30, 60) }
+        },
+        meta_description: {
+          page1: { text: m1, length: m1.length, optimal: m1.length.between?(70, 155) },
+          page2: { text: m2, length: m2.length, optimal: m2.length.between?(70, 155) }
+        }
+      }
+    end
+
+    def compare_headings
+      h1_1 = @data1.dig(:headings, :h1) || []
+      h1_2 = @data2.dig(:headings, :h1) || []
+      h2_1 = @data1.dig(:headings, :h2) || []
+      h2_2 = @data2.dig(:headings, :h2) || []
+
+      {
+        h1_count: { page1: h1_1.length, page2: h1_2.length },
+        h1_text: { page1: h1_1.first, page2: h1_2.first },
+        h2_count: { page1: h2_1.length, page2: h2_2.length }
+      }
+    end
+
+    def compare_images
+      img1 = @data1[:images] || {}
+      img2 = @data2[:images] || {}
+
+      {
+        total_images: { page1: img1[:total] || 0, page2: img2[:total] || 0 },
+        missing_alt: { page1: img1[:missing_alt] || 0, page2: img2[:missing_alt] || 0 }
+      }
+    end
+
+    def compare_links
+      l1 = @data1[:links] || {}
+      l2 = @data2[:links] || {}
+
+      {
+        internal: { page1: l1[:internal_count] || 0, page2: l2[:internal_count] || 0 },
+        external: { page1: l1[:external_count] || 0, page2: l2[:external_count] || 0 }
+      }
+    end
+
+    def compare_perf
+      {
+        response_time_ms: { page1: @data1[:response_time_ms], page2: @data2[:response_time_ms] }
+      }
+    end
+
+    def compare_schema
+      s1 = @data1.dig(:structured_data, :schemas) || []
+      s2 = @data2.dig(:structured_data, :schemas) || []
+
+      types1 = s1.map { |s| s['@type'] }.compact
+      types2 = s2.map { |s| s['@type'] }.compact
+
+      {
+        schema_count: { page1: s1.length, page2: s2.length },
+        schema_types: { page1: types1, page2: types2 }
+      }
+    end
+  end
+end
+
+# --- content_gap.rb ---
+# encoding: utf-8
+require 'set'
+
+module GSC
+  class ContentGap
+    STOP_WORDS = Set.new(%w[
+      a about above after again against all am an and any are aren't as at be because been before being below
+      between both but by can't cannot could couldn't did didn't do does doesn't doing don't down during each
+      few for from further had hadn't has hasn't have haven't having he he'd he'll he's her here here's hers
+      herself him himself his how how's i i'd i'll i'm i've if in into is isn't it it's its itself let's me
+      more most mustn't my myself no nor not of off on once only or other ought our ours ourselves out over own
+      same shan't she she'd she'll she's should shouldn't so some such than that that's the their theirs them
+      themselves then there there's these they they'd they'll they're they've this those through to too under until
+      up very was wasn't we we'd we'll we're we've were weren't what what's when when's where where's which while
+      who who's whom why why's with won't would wouldn't you you'd you'll you're you've your yours yourself yourselves
+    ])
+
+    attr_reader :url1, :url2
+
+    def initialize(url1, url2)
+      @url1 = url1
+      @url2 = url2
+    end
+
+    def analyze
+      pa1 = GSC::PageAnalyzer.new(@url1)
+      pa2 = GSC::PageAnalyzer.new(@url2)
+
+      data1 = pa1.fetch_and_analyze
+      data2 = pa2.fetch_and_analyze
+
+      text1 = extract_clean_text(pa1.html || '')
+      text2 = extract_clean_text(pa2.html || '')
+
+      tokens1 = tokenize(text1)
+      tokens2 = tokenize(text2)
+
+      unigrams1 = ngrams(tokens1, 1)
+      unigrams2 = ngrams(tokens2, 1)
+
+      bigrams1 = ngrams(tokens1, 2)
+      bigrams2 = ngrams(tokens2, 2)
+
+      trigrams1 = ngrams(tokens1, 3)
+      trigrams2 = ngrams(tokens2, 3)
+
+      # Competitor terms that occur at least 2 times, but occur 0 times in page1
+      missing_unigrams = term_gap(unigrams1, unigrams2, min_count: 2)
+      missing_bigrams  = term_gap(bigrams1, bigrams2, min_count: 2)
+      missing_trigrams = term_gap(trigrams1, trigrams2, min_count: 2)
+
+      # Heading gaps (H2/H3 in page2 that have no match in page1)
+      h1 = (data1.dig(:headings, :h2) || []) + (data1.dig(:headings, :h3) || [])
+      h2 = (data2.dig(:headings, :h2) || []) + (data2.dig(:headings, :h3) || [])
+
+      missing_headings = h2.reject do |heading|
+        h1.any? { |my_h| my_h.downcase.include?(heading.downcase[0..15]) }
+      end
+
+      {
+        page1: { url: @url1, word_count: tokens1.length },
+        page2: { url: @url2, word_count: tokens2.length },
+        missing_unigrams: missing_unigrams.first(15),
+        missing_bigrams: missing_bigrams.first(15),
+        missing_trigrams: missing_trigrams.first(10),
+        missing_headings: missing_headings.first(10)
+      }
+    end
+
+    private
+
+    def extract_clean_text(html)
+      text = html.dup
+      text.gsub!(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/i, ' ')
+      text.gsub!(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/i, ' ')
+      text.gsub!(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/i, ' ')
+      text.gsub!(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/i, ' ')
+      text.gsub!(/<[^>]+>/, ' ')
+      text.gsub!(/&[a-z]+;/i, ' ')
+      text.gsub!(/\s+/, ' ')
+      text.strip
+    end
+
+    def tokenize(text)
+      text.downcase.scan(/[a-z0-9]+/).reject { |w| w.length < 3 || STOP_WORDS.include?(w) }
+    end
+
+    def ngrams(tokens, n)
+      counts = Hash.new(0)
+      return counts if tokens.length < n
+
+      (0..(tokens.length - n)).each do |i|
+        gram = tokens[i, n].join(' ')
+        counts[gram] += 1
+      end
+      counts
+    end
+
+    def term_gap(counts1, counts2, min_count: 2)
+      gap = []
+      counts2.each do |term, count2|
+        count1 = counts1[term] || 0
+        if count2 >= min_count && count1 == 0
+          gap << { term: term, competitor_count: count2, your_count: count1 }
+        end
+      end
+      gap.sort_by { |item| -item[:competitor_count] }
+    end
+  end
+end
+
+# --- internal_links.rb ---
+# encoding: utf-8
+require 'uri'
+require 'set'
+
+module GSC
+  class InternalLinks
+    attr_reader :base_url, :pages, :graph, :orphans, :depths
+
+    def initialize(base_url, limit: 50)
+      @base_url = base_url.to_s.strip
+      @base_url = "https://#{@base_url}" unless @base_url =~ %r{^https?://}
+      @base_uri = URI.parse(@base_url)
+      @limit = limit
+      @graph = Hash.new { |h, k| h[k] = Set.new } # target_url => Set of source_urls
+      @out_links = Hash.new { |h, k| h[k] = Set.new } # source_url => Set of target_urls
+      @all_discovered = Set.new
+    end
+
+    def audit(sitemap_urls = nil)
+      urls_to_crawl = if sitemap_urls && !sitemap_urls.empty?
+                        sitemap_urls.first(@limit)
+                      else
+                        discover_urls
+                      end
+
+      urls_to_crawl.each do |url|
+        @all_discovered << normalize_url(url)
+      end
+
+      # Crawl each URL and extract internal links
+      urls_to_crawl.each do |url|
+        pa = GSC::PageAnalyzer.new(url)
+        pa.load_content! rescue next
+        dom = pa.analyze_dom rescue next
+
+        norm_source = normalize_url(url)
+        links = dom.dig(:links, :all) || []
+
+        links.each do |link_obj|
+          href = link_obj[:href]
+          target_url = resolve_internal_url(href)
+          next unless target_url
+
+          norm_target = normalize_url(target_url)
+          next if norm_target == norm_source
+
+          @graph[norm_target] << norm_source
+          @out_links[norm_source] << norm_target
+        end
+      end
+
+      # Calculate Orphans (pages in sitemap/discovered with 0 incoming internal links)
+      orphans = []
+      weak_pages = [] # only 1 internal link
+
+      @all_discovered.each do |url|
+        in_degree = @graph[url].size
+        if in_degree == 0 && url != normalize_url(@base_url)
+          orphans << url
+        elsif in_degree == 1
+          weak_pages << { url: url, source: @graph[url].first }
+        end
+      end
+
+      # Calculate click depths via BFS from root
+      depths = calculate_depths(normalize_url(@base_url))
+
+      {
+        base_url: @base_url,
+        total_pages: @all_discovered.size,
+        orphans: orphans,
+        weak_pages: weak_pages,
+        top_linked: top_linked_pages(10),
+        depths: depths
+      }
+    end
+
+    private
+
+    def discover_urls
+      loader = GSC::SitemapLoader.new(@base_url)
+      urls = loader.load
+      urls.empty? ? [@base_url] : urls.first(@limit)
+    rescue StandardError
+      [@base_url]
+    end
+
+    def resolve_internal_url(href)
+      return nil if href.nil? || href.strip.empty?
+      return nil if href =~ /^(mailto|tel|javascript|#):/i
+
+      uri = URI.join(@base_url, href) rescue nil
+      return nil unless uri && uri.scheme =~ /^https?$/i
+      return nil unless uri.host.downcase == @base_uri.host.downcase
+
+      uri.fragment = nil
+      uri.to_s
+    end
+
+    def normalize_url(url)
+      u = url.to_s.strip.sub(%r{/$}, '')
+      u
+    end
+
+    def calculate_depths(root_url)
+      depths = { root_url => 0 }
+      queue = [root_url]
+
+      until queue.empty?
+        curr = queue.shift
+        curr_depth = depths[curr]
+
+        (@out_links[curr] || []).each do |neighbor|
+          next if depths.key?(neighbor)
+
+          depths[neighbor] = curr_depth + 1
+          queue << neighbor
+        end
+      end
+
+      depths
+    end
+
+    def top_linked_pages(limit)
+      @graph.map do |url, sources|
+        { url: url, incoming_count: sources.size }
+      end.sort_by { |item| -item[:incoming_count] }.first(limit)
+    end
+  end
+end
+
+# --- schema_validator.rb ---
+# encoding: utf-8
+require 'json'
+
+module GSC
+  class SchemaValidator
+    attr_reader :url, :schemas, :validation_results
+
+    def initialize(url)
+      @url = url.to_s.strip
+    end
+
+    def audit
+      pa = GSC::PageAnalyzer.new(@url)
+      data = pa.fetch_and_analyze
+      @schemas = data.dig(:structured_data, :schemas) || []
+
+      results = []
+      @schemas.each_with_index do |schema, idx|
+        results << validate_single_schema(schema, idx)
+      end
+
+      {
+        url: @url,
+        total_schemas: @schemas.length,
+        schemas: results
+      }
+    end
+
+    def validate_single_schema(schema, idx)
+      type = schema['@type'] || 'Unknown'
+      errors = []
+      warnings = []
+
+      case type
+      when 'SoftwareApplication', 'WebApplication'
+        errors << 'Missing "name"' unless schema['name']
+        warnings << 'Missing "operatingSystem"' unless schema['operatingSystem']
+        warnings << 'Missing "applicationCategory"' unless schema['applicationCategory']
+        warnings << 'Missing "offers"' unless schema['offers']
+        warnings << 'Missing "aggregateRating"' unless schema['aggregateRating']
+
+      when 'FAQPage'
+        main_entity = schema['mainEntity']
+        if !main_entity || !main_entity.is_a?(Array) || main_entity.empty?
+          errors << 'FAQPage must contain a non-empty "mainEntity" array'
+        else
+          main_entity.each_with_index do |q, q_idx|
+            errors << "Question ##{q_idx + 1} missing name" unless q['name']
+            errors << "Question ##{q_idx + 1} missing acceptedAnswer" unless q['acceptedAnswer']
+          end
+        end
+
+      when 'Product'
+        errors << 'Missing "name"' unless schema['name']
+        warnings << 'Missing "image"' unless schema['image']
+        warnings << 'Missing "offers"' unless schema['offers']
+
+      when 'Article', 'BlogPosting'
+        errors << 'Missing "headline"' unless schema['headline']
+        errors << 'Missing "author"' unless schema['author']
+        warnings << 'Missing "datePublished"' unless schema['datePublished']
+        warnings << 'Missing "image"' unless schema['image']
+
+      when 'Organization', 'LocalBusiness'
+        errors << 'Missing "name"' unless schema['name']
+        errors << 'Missing "url"' unless schema['url']
+        warnings << 'Missing "logo"' unless schema['logo']
+      end
+
+      {
+        index: idx,
+        type: type,
+        valid: errors.empty?,
+        errors: errors,
+        warnings: warnings,
+        raw: schema
+      }
+    end
+
+    def self.generate_template(type, params = {})
+      case type.to_s.downcase
+      when 'faq'
+        {
+          '@context' => 'https://schema.org',
+          '@type' => 'FAQPage',
+          'mainEntity' => [
+            {
+              '@type' => 'Question',
+              'name' => params[:question] || 'What is PackingLog?',
+              'acceptedAnswer' => {
+                '@type' => 'Answer',
+                'text' => params[:answer] || 'PackingLog is a free moving box and inventory management system.'
+              }
+            }
+          ]
+        }
+      when 'software', 'app'
+        {
+          '@context' => 'https://schema.org',
+          '@type' => 'SoftwareApplication',
+          'name' => params[:name] || 'PackingLog',
+          'applicationCategory' => params[:category] || 'UtilitiesApplication',
+          'operatingSystem' => 'Web, iOS, Android',
+          'offers' => {
+            '@type' => 'Offer',
+            'price' => '0',
+            'priceCurrency' => 'USD'
+          }
+        }
+      else
+        {
+          '@context' => 'https://schema.org',
+          '@type' => 'Organization',
+          'name' => params[:name] || 'PackingLog',
+          'url' => params[:url] || 'https://packinglog.com'
+        }
+      end
+    end
+  end
+end
+
+# --- llms_generator.rb ---
+# encoding: utf-8
+require 'uri'
+
+module GSC
+  class LlmsGenerator
+    attr_reader :base_url, :pages
+
+    def initialize(base_url)
+      @base_url = base_url.to_s.strip
+      @base_url = "https://#{@base_url}" unless @base_url =~ %r{^https?://}
+    end
+
+    def generate_llms_txt(title: nil, summary: nil)
+      loader = GSC::SitemapLoader.new(@base_url)
+      urls = loader.load rescue [@base_url]
+      urls = [@base_url] if urls.empty?
+
+      site_title = title || URI.parse(@base_url).host.sub(/^www\./, '').capitalize
+      site_summary = summary || "Official documentation and product guides for #{site_title}."
+
+      out = []
+      out << "# #{site_title}"
+      out << ""
+      out << "> #{site_summary}"
+      out << ""
+      out << "## Core Documentation"
+      out << ""
+
+      # Sample first 15 key URLs and fetch metadata
+      urls.first(15).each do |url|
+        pa = GSC::PageAnalyzer.new(url)
+        pa.load_content! rescue next
+        dom = pa.analyze_dom rescue next
+
+        page_title = dom.dig(:title, :text) || url
+        page_desc = dom.dig(:meta_description, :text) || "Documentation page."
+
+        out << "- [#{page_title}](#{url}): #{page_desc}"
+      end
+
+      out << ""
+      out << "## Optional"
+      out << ""
+      out << "- [Full Documentation](#{@base_url}/llms-full.txt): Complete consolidated knowledge base for LLM context ingestion."
+      out << ""
+
+      out.join("\n")
+    end
+
+    def audit_ai_readability(url)
+      pa = GSC::PageAnalyzer.new(url)
+      data = pa.fetch_and_analyze
+
+      # Check criteria:
+      # 1. Clear H1 presence
+      # 2. Table presence (LLMs love tables)
+      # 3. Schema presence (structured data)
+      # 4. Definition / Bullet presence
+      html = pa.html || ''
+      has_tables = html.include?('<table')
+      has_lists = html.include?('<ul') || html.include?('<ol')
+      schemas = data.dig(:structured_data, :schemas) || []
+      h1_count = (data.dig(:headings, :h1) || []).length
+
+      score = 100
+      issues = []
+
+      if h1_count != 1
+        score -= 20
+        issues << "H1 count is #{h1_count} (Must be exactly 1 for clean LLM hierarchy)"
+      end
+
+      unless has_tables
+        score -= 15
+        issues << "No <table> found (tables increase LLM citation and fact extraction by 3x)"
+      end
+
+      unless has_lists
+        score -= 15
+        issues << "No bullet lists (<ul> or <ol>) found for quick entity consumption"
+      end
+
+      if schemas.empty?
+        score -= 20
+        issues << "No JSON-LD schemas detected (structured data accelerates AI knowledge graph inclusion)"
+      end
+
+      {
+        url: url,
+        ai_readability_score: [score, 0].max,
+        grade: score >= 80 ? 'A (Excellent)' : (score >= 60 ? 'B (Acceptable)' : 'C (Needs Work)'),
+        issues: issues,
+        features: {
+          has_tables: has_tables,
+          has_lists: has_lists,
+          schemas_found: schemas.length,
+          h1_count: h1_count
+        }
+      }
+    end
+  end
+end
+
+# --- serp_preview.rb ---
+# encoding: utf-8
+require 'uri'
+
+module GSC
+  class SerpPreview
+    attr_reader :url, :title, :desc, :data
+
+    DESKTOP_TITLE_PIXEL_LIMIT = 580.0
+    MOBILE_TITLE_PIXEL_LIMIT  = 650.0
+    DESKTOP_DESC_PIXEL_LIMIT  = 960.0
+    MOBILE_DESC_PIXEL_LIMIT   = 680.0
+
+    def initialize(url = nil, title: nil, desc: nil)
+      @url = url.to_s.dup.force_encoding('UTF-8').scrub.strip
+      @custom_title = title ? title.to_s.dup.force_encoding('UTF-8').scrub : nil
+      @custom_desc = desc ? desc.to_s.dup.force_encoding('UTF-8').scrub : nil
+    end
+
+    def generate
+      if @custom_title || @custom_desc
+        generate_custom
+      elsif !@url.empty? && @url.start_with?('http://', 'https://')
+        generate_from_url
+      else
+        generate_custom
+      end
+    end
+
+    def self.estimate_pixel_width(str)
+      width = 0.0
+      str.to_s.each_char do |ch|
+        width += case ch
+                 when /[WMwm]/ then 13.5
+                 when /[ABCDEFGHKNOPQRSTUVXYZ]/ then 10.5
+                 when /[abcdeghnopqrsuvxyz]/ then 8.5
+                 when /[fIjt1l\|\ \.\:\;]/ then 4.5
+                 else 9.0
+                 end
+      end
+      width.round(1)
+    end
+
+    private
+
+    def generate_from_url
+      pa = GSC::PageAnalyzer.new(@url)
+      @data = pa.fetch_and_analyze
+
+      title = @custom_title || @data.dig(:title, :text) || 'Untitled Page'
+      desc = @custom_desc || @data.dig(:meta_description, :text) || 'No meta description found.'
+      canonical = @data.dig(:canonical, :url) || @url
+
+      og = @data[:open_graph] || {}
+      twitter = @data[:twitter_card] || {}
+
+      build_result(
+        url: @url,
+        canonical: canonical,
+        title: title,
+        desc: desc,
+        og_title: og['og:title'],
+        og_description: og['og:description'],
+        og_image: og['og:image'],
+        twitter_card: twitter['twitter:card']
+      )
+    end
+
+    def generate_custom
+      url = @url.empty? ? "https://#{Config.default_domain || 'example.com'}/page" : @url
+      title = @custom_title || 'Example Page Title — High Growth Operator'
+      desc = @custom_desc || 'Discover how to automate your search presence, crawl budgets, and organic rankings with zero dependencies.'
+
+      build_result(
+        url: url,
+        canonical: url,
+        title: title,
+        desc: desc
+      )
+    end
+
+    def build_result(url:, canonical:, title:, desc:, og_title: nil, og_description: nil, og_image: nil, twitter_card: nil)
+      t_px = self.class.estimate_pixel_width(title)
+      d_px = self.class.estimate_pixel_width(desc)
+
+      title_truncated = t_px > DESKTOP_TITLE_PIXEL_LIMIT
+      desc_truncated  = d_px > DESKTOP_DESC_PIXEL_LIMIT
+
+      desktop_title = title_truncated ? truncate_to_pixels(title, DESKTOP_TITLE_PIXEL_LIMIT) : title
+      desktop_desc  = desc_truncated  ? truncate_to_pixels(desc, DESKTOP_DESC_PIXEL_LIMIT)  : desc
+
+      {
+        url: url,
+        canonical: canonical,
+        title: title,
+        meta_description: desc,
+        metrics: {
+          title_chars: title.length,
+          title_pixel_est: t_px,
+          title_desktop_limit: DESKTOP_TITLE_PIXEL_LIMIT,
+          title_truncated: title_truncated,
+          desc_chars: desc.length,
+          desc_pixel_est: d_px,
+          desc_desktop_limit: DESKTOP_DESC_PIXEL_LIMIT,
+          desc_truncated: desc_truncated
+        },
+        desktop_serp: {
+          breadcrumb: format_breadcrumb(canonical),
+          title: desktop_title,
+          snippet: desktop_desc
+        },
+        mobile_serp: {
+          breadcrumb: format_breadcrumb(canonical),
+          title: t_px > MOBILE_TITLE_PIXEL_LIMIT ? truncate_to_pixels(title, MOBILE_TITLE_PIXEL_LIMIT) : title,
+          snippet: d_px > MOBILE_DESC_PIXEL_LIMIT ? truncate_to_pixels(desc, MOBILE_DESC_PIXEL_LIMIT) : desc
+        },
+        social: {
+          og_title: og_title || title,
+          og_description: og_description || desc,
+          og_image: og_image,
+          twitter_card: twitter_card || 'summary_large_image'
+        }
+      }
+    end
+
+    def truncate_to_pixels(str, limit)
+      return str if self.class.estimate_pixel_width(str) <= limit
+
+      chars = []
+      str.each_char do |c|
+        candidate = "#{chars.join}#{c}..."
+        break if self.class.estimate_pixel_width(candidate) > limit
+        chars << c
+      end
+      "#{chars.join}..."
+    end
+
+    def format_breadcrumb(url_str)
+      uri = URI.parse(url_str) rescue nil
+      return url_str unless uri && uri.host
+
+      domain = uri.host.sub(/^www\./, '')
+      parts = uri.path.split('/').reject(&:empty?)
+      if parts.empty?
+        "https://#{domain}"
+      else
+        "https://#{domain} > #{parts.join(' > ')}"
+      end
+    end
+  end
+end
+
+# --- network_tracer.rb ---
+# encoding: utf-8
+require 'net/http'
+require 'uri'
+
+module GSC
+  class NetworkTracer
+    attr_reader :start_url, :max_hops
+
+    def initialize(start_url, max_hops: 10)
+      @start_url = start_url.to_s.strip
+      @start_url = "http://#{@start_url}" unless @start_url =~ %r{^https?://}
+      @max_hops = max_hops
+    end
+
+    def trace
+      current_url = @start_url
+      hops = []
+      visited = Set.new
+
+      @max_hops.times do |hop_idx|
+        break if visited.include?(current_url)
+        visited << current_url
+
+        uri = URI.parse(current_url) rescue nil
+        break unless uri && uri.host
+
+        start_t = Time.now
+        res = nil
+
+        begin
+          Net::HTTP.start(uri.hostname, uri.port, use_ssl: (uri.scheme == 'https'), open_timeout: 5, read_timeout: 10) do |http|
+            req = Net::HTTP::Get.new(uri.request_uri)
+            req['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) gsc-cli/2.1'
+            res = http.request(req)
+          end
+        rescue StandardError => e
+          hops << {
+            hop: hop_idx + 1,
+            url: current_url,
+            error: e.message
+          }
+          break
+        end
+
+        duration_ms = ((Time.now - start_t) * 1000).round(1)
+        status_code = res.code.to_i
+        location = res['location']
+
+        hop_info = {
+          hop: hop_idx + 1,
+          url: current_url,
+          status_code: status_code,
+          duration_ms: duration_ms,
+          x_robots_tag: res['x-robots-tag'],
+          canonical_header: res['link'] =~ /rel="canonical"/i ? res['link'] : nil,
+          hsts: res['strict-transport-security'],
+          content_type: res['content-type'],
+          server: res['server']
+        }
+
+        hops << hop_info
+
+        if [301, 302, 303, 307, 308].include?(status_code) && location
+          current_url = URI.join(current_url, location).to_s
+        else
+          break
+        end
+      end
+
+      total_time = hops.sum { |h| h[:duration_ms] || 0 }.round(1)
+      final_hop = hops.last || {}
+      is_redirect_chain = hops.length > 2
+
+      {
+        start_url: @start_url,
+        final_url: final_hop[:url],
+        total_hops: hops.length,
+        total_duration_ms: total_time,
+        is_redirect_chain: is_redirect_chain,
+        hops: hops
+      }
+    end
+  end
+end
+
+# --- robots_checker.rb ---
+# encoding: utf-8
+require 'net/http'
+require 'uri'
+
+module GSC
+  class RobotsChecker
+    attr_reader :base_url, :robots_content
+
+    def initialize(target_url)
+      @target_url = target_url.to_s.strip
+      @target_url = "https://#{@target_url}" unless @target_url =~ %r{^https?://}
+      @uri = URI.parse(@target_url)
+      @robots_url = "#{@uri.scheme}://#{@uri.host}:#{@uri.port}/robots.txt"
+    end
+
+    def fetch_robots_txt
+      res = Net::HTTP.get_response(URI.parse(@robots_url))
+      return '' unless res.code == '200'
+
+      res.body.force_encoding('UTF-8')
+    rescue StandardError
+      ''
+    end
+
+    def check(path_to_test = nil, user_agent = 'googlebot')
+      @robots_content ||= fetch_robots_txt
+      path = path_to_test || @uri.path
+      path = '/' if path.empty?
+
+      ua = user_agent.to_s.downcase
+      rules = parse_rules(ua)
+
+      allowed = true
+      matched_rule = nil
+
+      rules.each do |rule|
+        pattern = rule[:path]
+        regex = Regexp.new('^' + Regexp.escape(pattern).gsub('\*', '.*'))
+        if path =~ regex
+          allowed = (rule[:type] == :allow)
+          matched_rule = rule
+        end
+      end
+
+      {
+        robots_url: @robots_url,
+        user_agent: user_agent,
+        tested_path: path,
+        allowed: allowed,
+        matched_rule: matched_rule,
+        has_robots_txt: !@robots_content.empty?
+      }
+    end
+
+    private
+
+    def parse_rules(target_ua)
+      rules = []
+      current_ua = nil
+      applies = false
+
+      @robots_content.each_line do |line|
+        line = line.strip.sub(/#.*$/, '')
+        next if line.empty?
+
+        if line =~ /^User-agent:\s*(.+)$/i
+          current_ua = $1.strip.downcase
+          applies = (current_ua == '*' || current_ua == target_ua)
+        elsif applies && line =~ /^Disallow:\s*(.*)$/i
+          val = $1.strip
+          rules << { type: :disallow, path: val } unless val.empty?
+        elsif applies && line =~ /^Allow:\s*(.*)$/i
+          val = $1.strip
+          rules << { type: :allow, path: val } unless val.empty?
+        end
+      end
+
+      rules
+    end
+  end
+end
+
+# --- backlinks_manager.rb ---
+# encoding: utf-8
+require 'csv'
+require 'fileutils'
+require 'json'
+
+module GSC
+  class BacklinksManager
+    attr_reader :domain, :storage_file
+
+    def initialize(domain)
+      @domain = clean_domain(domain)
+      @domain_dir = File.join(Dir.home, '.config', 'gsc', 'domains', @domain)
+      FileUtils.mkdir_p(@domain_dir)
+      @storage_file = File.join(@domain_dir, 'backlinks.json')
+    end
+
+    def load_data
+      return { 'sources' => [], 'targets' => [], 'updated_at' => nil } unless File.exist?(@storage_file)
+
+      JSON.parse(File.read(@storage_file, encoding: 'UTF-8'))
+    rescue StandardError
+      { 'sources' => [], 'targets' => [], 'updated_at' => nil }
+    end
+
+    def save_data(data)
+      data['updated_at'] = Time.now.utc.iso8601
+      File.write(@storage_file, JSON.pretty_generate(data))
+    end
+
+    def import_csv(content)
+      data = load_data
+      lines = content.to_s.strip.lines
+
+      return { error: 'Empty content' } if lines.empty?
+
+      # Detect header
+      header = lines.first.downcase
+      if header.include?('top linking sites') || header.include?('root domain')
+        # Sources CSV
+        sources = []
+        CSV.parse(content, headers: true, skip_blanks: true) do |row|
+          domain_name = row['Top linking sites'] || row['Site'] || row[0]
+          links_count = (row['Target pages'] || row['Links'] || row[1] || '1').to_s.gsub(',', '').to_i
+          sources << { 'domain' => domain_name.to_s.strip, 'links_count' => links_count } if domain_name
+        end
+        data['sources'] = sources
+      else
+        # Target pages CSV
+        targets = []
+        CSV.parse(content, headers: true, skip_blanks: true) do |row|
+          target_url = row['Target page'] || row['Page'] || row[0]
+          incoming = (row['Incoming links'] || row['Links'] || row[1] || '1').to_s.gsub(',', '').to_i
+          targets << { 'target_url' => target_url.to_s.strip, 'incoming_count' => incoming } if target_url
+        end
+        data['targets'] = targets
+      end
+
+      save_data(data)
+      {
+        status: 'success',
+        sources_count: data['sources'].length,
+        targets_count: data['targets'].length,
+        updated_at: data['updated_at']
+      }
+    rescue StandardError => e
+      { error: "Failed to parse CSV: #{e.message}" }
+    end
+
+    def summary(target_page: nil)
+      data = load_data
+      sources = data['sources'] || []
+      targets = data['targets'] || []
+
+      filtered_targets = target_page ? targets.select { |t| t['target_url'].include?(target_page) } : targets
+
+      {
+        domain: @domain,
+        total_referring_domains: sources.length,
+        total_external_links: sources.sum { |s| s['links_count'] || 0 },
+        top_referring_domains: sources.sort_by { |s| -(s['links_count'] || 0) }.first(15),
+        top_target_pages: filtered_targets.sort_by { |t| -(t['incoming_count'] || 0) }.first(15),
+        updated_at: data['updated_at']
+      }
+    end
+
+    private
+
+    def clean_domain(input)
+      d = input.to_s.strip.downcase
+      d = d.sub(%r{^https?://}, '').sub(%r{/.*$}, '').sub(/^www\./, '')
+      d
+    end
+  end
+end
+
+# --- indexnow.rb ---
+require 'net/http'
+require 'uri'
+require 'json'
+require 'openssl'
+
+module GSC
+  class IndexNow
+    ENDPOINT = 'https://api.indexnow.org/indexnow'
+
+    def self.generate_key
+      OpenSSL::Random.random_bytes(16).unpack1('H*')
+    end
+
+    def self.get_or_create_key
+      existing = Config.get('indexnow_key') || ENV['INDEXNOW_KEY']
+      return existing if existing && !existing.strip.empty?
+
+      new_key = generate_key
+      Config.set('indexnow_key', new_key)
+      new_key
+    end
+
+    def self.set_key(key)
+      clean = key.to_s.strip
+      Config.set('indexnow_key', clean)
+      clean
+    end
+
+    def self.submit(urls, key: nil, host: nil)
+      urls = Array(urls).map(&:to_s).map(&:strip).reject(&:empty?)
+      raise 'No URLs provided for IndexNow submission' if urls.empty?
+
+      first_uri = URI.parse(urls.first) rescue nil
+      detected_host = host || (first_uri ? first_uri.host : Config.default_domain)
+      raise 'Could not determine host for IndexNow submission. Please provide full URLs (e.g. https://example.com/page)' unless detected_host
+
+      detected_host = detected_host.sub(%r{^https?://}, '').sub(/^sc-domain:/, '').chomp('/')
+
+      active_key = key || get_or_create_key
+
+      payload = {
+        host: detected_host,
+        key: active_key,
+        keyLocation: "https://#{detected_host}/#{active_key}.txt",
+        urlList: urls
+      }
+
+      uri = URI(ENDPOINT)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      http.open_timeout = 10
+      http.read_timeout = 20
+
+      req = Net::HTTP::Post.new(uri.request_uri)
+      req['Content-Type'] = 'application/json; charset=utf-8'
+      req['User-Agent'] = 'gsc-cli IndexNow/1.0'
+      req.body = JSON.generate(payload)
+
+      res = http.request(req)
+
+      status_msg = case res.code.to_i
+                   when 200 then 'OK (URLs submitted successfully)'
+                   when 202 then 'Accepted (Key pending verification)'
+                   when 400 then 'Bad Request (Invalid JSON or URL format)'
+                   when 403 then "Forbidden (Key invalid or https://#{detected_host}/#{active_key}.txt missing)"
+                   when 422 then 'Unprocessable Entity (URLs do not match host)'
+                   when 429 then 'Too Many Requests'
+                   else "HTTP #{res.code}"
+                   end
+
+      {
+        success: [200, 202].include?(res.code.to_i),
+        http_code: res.code.to_i,
+        message: status_msg,
+        host: detected_host,
+        key: active_key,
+        key_location: "https://#{detected_host}/#{active_key}.txt",
+        submitted_urls: urls.size,
+        urls: urls
+      }
+    end
+
+    def self.submit_sitemap(sitemap_path_or_url, key: nil, limit: nil)
+      urls = SitemapLoader.resolve_urls(sitemap_path_or_url, quiet: true)
+      raise "No URLs found in sitemap: #{sitemap_path_or_url}" if urls.empty?
+
+      urls = urls.first(limit) if limit && limit.positive?
+      submit(urls, key: key)
+    end
+  end
+end
+
 # --- command_registry.rb ---
 module GSC
   module CommandRegistry
@@ -2414,12 +3794,16 @@ COMMAND_REGISTRY = [
       { name: "sitemaps-list", shortcut: nil, desc: "List registered XML sitemaps in Search Console", flags: ["-d"] },
       { name: "sitemaps-submit <url>", shortcut: nil, desc: "Submit/register XML sitemap with Search Console", flags: ["-d"] },
       { name: "index-sitemap <file/url>", shortcut: nil, desc: "Batch notify Googlebot to index all sitemap URLs", flags: ["--delay", "--dry-run"] },
-      { name: "inspect-sitemap <file/url>", shortcut: nil, desc: "Bulk inspect indexation status for all sitemap URLs", flags: ["--delay"] }
+      { name: "inspect-sitemap <file/url>", shortcut: nil, desc: "Bulk inspect indexation status for all sitemap URLs", flags: ["--delay"] },
+      { name: "indexnow <url>", shortcut: "in", desc: "Instant indexing via IndexNow protocol (Bing, Yandex, Seznam, Naver)", flags: ["--key", "--json"] },
+      { name: "indexnow-sitemap <sitemap>", shortcut: "ins", desc: "Batch submit all sitemap URLs to IndexNow", flags: ["--key", "--limit", "--json"] },
+      { name: "connect indexnow [key]", shortcut: nil, desc: "Configure IndexNow API key and display verification file details", flags: [] }
     ]
   },
   {
     category: "Health, Diagnostics & Setup",
     commands: [
+      { name: "serp [url|title]", shortcut: "preview", desc: "Google SERP & Title Pixel Width Simulator (Desktop & Mobile)", flags: ["--title", "--desc", "--url", "--json"] },
       { name: "page <url|file>", shortcut: "pg", desc: "Detailed On-Page DOM + Off-Page GSC Performance Audit", flags: ["--check-links", "--json"] },
       { name: "site-audit [sitemap]", shortcut: "crl", desc: "Full site crawl, broken links (404/500), image alts & AI report", flags: ["--check-links", "--report", "--json"] },
       { name: "audit", shortcut: "a", desc: "360-degree Comprehensive SEO & GA4 health audit", flags: ["--days", "-d"] },
@@ -2691,6 +4075,694 @@ COMMAND_REGISTRY = [
   SKILL_MD_CONTENT = CommandRegistry::SKILL_MD_CONTENT
 end
 
+# --- cli_advanced.rb ---
+# encoding: utf-8
+require 'json'
+require 'uri'
+
+module GSC
+  class CLI
+    # 1. Google Suggest
+    def self.handle_suggest_command(target, options)
+      query = target.to_s.strip
+      if query.empty?
+        puts Color.c("❌ Error: Query required. Example: gsc suggest \"moving boxes\"", Color::RED)
+        return
+      end
+
+      alphabet = options[:alphabet] || false
+      suggest = GSC::GoogleSuggest.new(query, options)
+      results = suggest.fetch(alphabet: alphabet, questions: false)
+
+      if options[:json]
+        puts JSON.pretty_generate(results)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "💡 #{Color::BOLD}GOOGLE SEARCH SUGGESTIONS:#{Color::RESET} #{Color.c(query, Color::CYAN)}"
+      puts "─" * 70
+
+      if alphabet
+        results.each do |key, list|
+          next if list.empty?
+          prefix = (key == 'root') ? "Root" : "+ #{key.upcase}"
+          puts "\n#{Color.c(prefix, Color::BOLD, Color::YELLOW)}:"
+          list.each do |item|
+            puts "   • #{item[:term]}"
+          end
+        end
+      else
+        if results.empty?
+          puts "   (No search suggestions returned)"
+        else
+          results.each_with_index do |item, idx|
+            puts "   #{Color.c((idx + 1).to_s.rjust(2), Color::DIM)}. #{Color.c(item[:term], Color::BOLD)}"
+          end
+        end
+      end
+      puts ""
+    end
+
+    # 2. Questions / PAA
+    def self.handle_questions_command(target, options)
+      query = target.to_s.strip
+      if query.empty?
+        puts Color.c("❌ Error: Query required. Example: gsc questions \"packing dishes\"", Color::RED)
+        return
+      end
+
+      suggest = GSC::GoogleSuggest.new(query, options)
+      results = suggest.fetch(questions: true)
+
+      if options[:json]
+        puts JSON.pretty_generate(results)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "❓ #{Color::BOLD}SEARCH INTENT QUESTIONS & FAQs:#{Color::RESET} #{Color.c(query, Color::CYAN)}"
+      puts "─" * 70
+
+      total_found = 0
+      results.each do |prefix, list|
+        next if list.empty?
+        puts "\n#{Color.c(prefix.upcase, Color::BOLD, Color::CYAN)}:"
+        list.each do |item|
+          total_found += 1
+          puts "   • #{item[:term]}"
+        end
+      end
+
+      if total_found.zero?
+        puts "   (No question suggestions found for \"#{query}\")"
+      end
+      puts ""
+    end
+
+    # 3. OpenPageRank Domain Authority
+    def self.handle_authority_command(target, extra, options)
+      domains = [target, extra].flatten.compact.reject { |d| d.to_s.strip.empty? }
+      domains << Config.default_domain if domains.empty?
+      domains = domains.compact
+
+      if domains.empty?
+        puts Color.c("❌ Error: Domain required. Example: gsc authority packinglog.com", Color::RED)
+        return
+      end
+
+      opr = GSC::OpenPageRank.new
+      unless opr.configured?
+        puts Color.c("⚠️ OpenPageRank API key not configured.", Color::YELLOW, Color::BOLD)
+        puts "   Get a 100% free key (300,000 free queries/month) at: #{Color.c('https://openpagerank.com', Color::CYAN)}"
+        puts "   Then run: #{Color.c('gsc config set opr_api_key <YOUR_KEY>', Color::GREEN)}"
+        puts "   Or pass:  #{Color.c('OPENPAGERANK_API_KEY=<KEY> gsc authority ...', Color::DIM)}"
+        return
+      end
+
+      data = opr.check_domains(domains)
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "🌐 #{Color::BOLD}OPEN PAGERANK & DOMAIN AUTHORITY (Common Crawl Graph):#{Color::RESET}"
+      puts "─" * 75
+
+      if data[:status] == 'error'
+        puts Color.c("❌ Error: #{data[:message]}", Color::RED)
+        return
+      end
+
+      puts "#{'DOMAIN'.ljust(35)} #{'PAGERANK'.ljust(12)} #{'GLOBAL RANK'.ljust(18)} #{'STATUS'}"
+      puts "─" * 75
+
+      (data[:records] || []).each do |rec|
+        d_name = rec[:domain].to_s.ljust(35)
+        pr = sprintf("%.2f / 10", rec[:page_rank_decimal]).ljust(12)
+        gr = rec[:rank] ? "##{rec[:rank].to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse}".ljust(18) : "N/A".ljust(18)
+        st = (rec[:status_code] == 200) ? Color.c("200 OK", Color::GREEN) : Color.c(rec[:status_code].to_s, Color::YELLOW)
+
+        puts "#{Color.c(d_name, Color::BOLD)} #{Color.c(pr, Color::CYAN)} #{Color.c(gr, Color::YELLOW)} #{st}"
+      end
+      puts ""
+    end
+
+    # 4. PageSpeed Core Web Vitals
+    def self.handle_speed_command(target, options)
+      url = target || "https://#{Config.default_domain || 'example.com'}"
+      url = "https://#{url}" unless url =~ %r{^https?://}
+      strategy = options[:strategy] || 'mobile'
+
+      puts BANNER unless options[:json] || options[:in_dashboard]
+      puts "⚡ Measuring Core Web Vitals via Google PageSpeed Insights (#{strategy.upcase}):" unless options[:json]
+      puts "   #{Color.c(url, Color::CYAN)}\n" unless options[:json]
+
+      ps = GSC::PageSpeed.new(url, strategy: strategy)
+      data = ps.run
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      if data[:error]
+        puts Color.c("❌ PageSpeed API Error: #{data[:message]}", Color::RED)
+        return
+      end
+
+      perf_score = data[:performance_score]
+      score_color = perf_score >= 90 ? Color::GREEN : (perf_score >= 50 ? Color::YELLOW : Color::RED)
+
+      puts "╔══════════════════════════════════════════════════════════════╗"
+      puts "║ Lighthouse Performance Score: #{Color.c(perf_score.to_s.rjust(3) + ' / 100', score_color, Color::BOLD)}                ║"
+      puts "║ Lighthouse SEO Score        : #{Color.c(data[:seo_score].to_s.rjust(3) + ' / 100', Color::GREEN, Color::BOLD)}                ║"
+      puts "╚══════════════════════════════════════════════════════════════╝"
+
+      m = data[:metrics] || {}
+      puts "\n#{Color::BOLD}📊 CORE WEB VITALS (Lab Metrics):#{Color::RESET}"
+      puts "   • LCP (Largest Contentful Paint) : #{Color.c(m[:lcp] || 'N/A', Color::BOLD)}"
+      puts "   • FCP (First Contentful Paint)   : #{Color.c(m[:fcp] || 'N/A', Color::BOLD)}"
+      puts "   • CLS (Cumulative Layout Shift)  : #{Color.c(m[:cls] || 'N/A', Color::BOLD)}"
+      puts "   • TBT (Total Blocking Time)      : #{Color.c(m[:tbt] || 'N/A', Color::BOLD)}"
+      puts "   • Speed Index                    : #{Color.c(m[:speed_index] || 'N/A', Color::BOLD)}"
+
+      opps = data[:opportunities] || []
+      unless opps.empty?
+        puts "\n#{Color::BOLD}💡 TOP SPEED OPPORTUNITIES:#{Color::RESET}"
+        opps.each do |opp|
+          puts "   • #{opp[:title]}: #{Color.c(opp[:display] || "#{opp[:savings_ms]}ms savings", Color::YELLOW)}"
+        end
+      end
+      puts ""
+    end
+
+    # 5. Page Comparison
+    def self.handle_compare_command(target, extra, options)
+      url1 = target
+      url2 = extra
+
+      if url1.nil? || url2.nil?
+        puts Color.c("❌ Error: Two URLs required. Example: gsc compare https://site.com/p1 https://competitor.com/p2", Color::RED)
+        return
+      end
+
+      comp = GSC::PageComparator.new(url1, url2)
+      data = comp.compare
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "🥊 #{Color::BOLD}HEAD-TO-HEAD SEO ON-PAGE COMPARISON:#{Color::RESET}"
+      puts "   Page 1 (Target):     #{Color.c(url1, Color::CYAN)}"
+      puts "   Page 2 (Competitor): #{Color.c(url2, Color::YELLOW)}"
+      puts "─" * 80
+
+      c = data[:comparison] || {}
+
+      # Meta Titles
+      t1 = c.dig(:meta, :title, :page1) || {}
+      t2 = c.dig(:meta, :title, :page2) || {}
+      puts "\n#{Color::BOLD}📑 TITLE TAG:#{Color::RESET}"
+      puts "   P1: #{t1[:text]} (#{t1[:length]} chars) [#{t1[:optimal] ? Color.c('Optimal', Color::GREEN) : Color.c('Review', Color::YELLOW)}]"
+      puts "   P2: #{t2[:text]} (#{t2[:length]} chars) [#{t2[:optimal] ? Color.c('Optimal', Color::GREEN) : Color.c('Review', Color::YELLOW)}]"
+
+      # Headings
+      h = c[:headings] || {}
+      puts "\n#{Color::BOLD}🏷️ HEADINGS H1 / H2:#{Color::RESET}"
+      puts "   P1: #{h.dig(:h1_count, :page1)} H1s | #{h.dig(:h2_count, :page1)} H2s"
+      puts "   P2: #{h.dig(:h1_count, :page2)} H1s | #{h.dig(:h2_count, :page2)} H2s"
+
+      # Images
+      img = c[:images] || {}
+      puts "\n#{Color::BOLD}🖼️ IMAGES & ACCESSIBILITY:#{Color::RESET}"
+      puts "   P1: #{img.dig(:total_images, :page1)} images (#{img.dig(:missing_alt, :page1)} missing alt)"
+      puts "   P2: #{img.dig(:total_images, :page2)} images (#{img.dig(:missing_alt, :page2)} missing alt)"
+
+      # Links
+      l = c[:links] || {}
+      puts "\n#{Color::BOLD}🔗 LINK COUNTS:#{Color::RESET}"
+      puts "   P1: #{l.dig(:internal, :page1)} internal | #{l.dig(:external, :page1)} external"
+      puts "   P2: #{l.dig(:internal, :page2)} internal | #{l.dig(:external, :page2)} external"
+
+      # Schema
+      s = c[:structured_data] || {}
+      puts "\n#{Color::BOLD}📦 STRUCTURED DATA (JSON-LD):#{Color::RESET}"
+      puts "   P1: #{s.dig(:schema_count, :page1)} schemas #{(s.dig(:schema_types, :page1) || []).inspect}"
+      puts "   P2: #{s.dig(:schema_count, :page2)} schemas #{(s.dig(:schema_types, :page2) || []).inspect}"
+
+      # Speed
+      p_time = c[:performance] || {}
+      puts "\n#{Color::BOLD}⚡ RESPONSE TIME:#{Color::RESET}"
+      puts "   P1: #{p_time.dig(:response_time_ms, :page1)}ms | P2: #{p_time.dig(:response_time_ms, :page2)}ms"
+      puts ""
+    end
+
+    # 6. Content Gap
+    def self.handle_content_gap_command(target, extra, options)
+      url1 = target
+      url2 = extra
+
+      if url1.nil? || url2.nil?
+        puts Color.c("❌ Error: Two URLs required. Example: gsc content-gap https://mysite.com https://competitor.com", Color::RED)
+        return
+      end
+
+      gap = GSC::ContentGap.new(url1, url2)
+      data = gap.analyze
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "🔍 #{Color::BOLD}CONTENT & TOPICAL KEYWORD GAP (SurferSEO Style):#{Color::RESET}"
+      puts "   My URL:         #{Color.c(url1, Color::CYAN)} (#{data[:page1][:word_count]} words)"
+      puts "   Competitor URL: #{Color.c(url2, Color::YELLOW)} (#{data[:page2][:word_count]} words)"
+      puts "─" * 80
+
+      puts "\n#{Color::BOLD}🎯 HIGH-FREQUENCY PHRASES IN COMPETITOR MISSING IN YOUR CONTENT:#{Color::RESET}"
+      unigrams = data[:missing_unigrams] || []
+      bigrams  = data[:missing_bigrams] || []
+
+      if unigrams.empty? && bigrams.empty?
+        puts "   (No major content gap detected! Your page covers competitor terminology well.)"
+      else
+        puts "\n   #{Color.c('Top Missing 2-Word Keyphrases:', Color::BOLD, Color::YELLOW)}"
+        bigrams.first(8).each do |b|
+          puts "   • \"#{Color.c(b[:term], Color::BOLD)}\" (Competitor uses #{b[:competitor_count]}x, You: #{b[:your_count]}x)"
+        end
+
+        puts "\n   #{Color.c('Top Missing Keywords:', Color::BOLD, Color::CYAN)}"
+        unigrams.first(8).each do |u|
+          puts "   • \"#{Color.c(u[:term], Color::BOLD)}\" (Competitor uses #{u[:competitor_count]}x, You: #{u[:your_count]}x)"
+        end
+      end
+
+      headings = data[:missing_headings] || []
+      unless headings.empty?
+        puts "\n#{Color::BOLD}📑 COMPETITOR HEADINGS / TOPICS YOU OMITTED:#{Color::RESET}"
+        headings.each do |h|
+          puts "   • #{h}"
+        end
+      end
+      puts ""
+    end
+
+    # 7. Internal Links Audit
+    def self.handle_internal_links_command(target, options)
+      base_url = target || "https://#{Config.default_domain || 'example.com'}"
+      il = GSC::InternalLinks.new(base_url, limit: options[:limit] || 50)
+
+      puts BANNER unless options[:json] || options[:in_dashboard]
+      puts "🕸️ Auditing Internal Links & Orphan Pages for: #{Color.c(base_url, Color::CYAN)}...\n" unless options[:json]
+
+      data = il.audit
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts "─" * 80
+      puts "Pages Discovered: #{Color.c(data[:total_pages].to_s, Color::BOLD)}"
+      puts "Orphan Pages:     #{Color.c(data[:orphans].length.to_s, data[:orphans].empty? ? Color::GREEN : Color::RED, Color::BOLD)}"
+      puts "Weakly Linked:    #{Color.c(data[:weak_pages].length.to_s, Color::YELLOW, Color::BOLD)} (Only 1 incoming internal link)"
+      puts "─" * 80
+
+      orphans = data[:orphans] || []
+      unless orphans.empty?
+        puts "\n#{Color::BOLD}🚨 ORPHAN PAGES (0 incoming internal links - Crawl Dead Ends):#{Color::RESET}"
+        orphans.each do |orp|
+          puts "   • #{Color.c(orp, Color::RED)}"
+        end
+      end
+
+      puts "\n#{Color::BOLD}🔝 MOST LINKED INTERNAL PAGES:#{Color::RESET}"
+      (data[:top_linked] || []).each do |top|
+        puts "   • #{top[:url]} (#{Color.c(top[:incoming_count].to_s, Color::CYAN)} incoming links)"
+      end
+      puts ""
+    end
+
+    # 8. Schema Validator & Generator
+    def self.handle_schema_command(target, extra, options)
+      if target == 'generate' || target == 'gen'
+        schema_type = extra || 'faq'
+        tpl = GSC::SchemaValidator.generate_template(schema_type)
+        if options[:json]
+          puts JSON.pretty_generate(tpl)
+        else
+          puts Color.c("📋 Generated JSON-LD Schema (#{schema_type}):", Color::GREEN, Color::BOLD)
+          puts "<script type=\"application/ld+json\">"
+          puts JSON.pretty_generate(tpl)
+          puts "</script>"
+        end
+        return
+      end
+
+      url = target || "https://#{Config.default_domain || 'example.com'}"
+      sv = GSC::SchemaValidator.new(url)
+      data = sv.audit
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "📦 #{Color::BOLD}STRUCTURED DATA & RICH SNIPPET VALIDATION:#{Color::RESET} #{Color.c(url, Color::CYAN)}"
+      puts "─" * 75
+
+      schemas = data[:schemas] || []
+      if schemas.empty?
+        puts "   (No JSON-LD structured data schemas found on this page)"
+        puts "   Tip: Run `gsc schema generate faq` to create valid JSON-LD schema."
+      else
+        schemas.each do |sc|
+          valid_badge = sc[:valid] ? Color.c("VALID", Color::GREEN, Color::BOLD) : Color.c("INVALID", Color::RED, Color::BOLD)
+          puts "\nSchema ##{sc[:index] + 1}: #{Color.c(sc[:type], Color::BOLD)} [#{valid_badge}]"
+          (sc[:errors] || []).each { |e| puts "   ❌ Error: #{Color.c(e, Color::RED)}" }
+          (sc[:warnings] || []).each { |w| puts "   ⚠️ Warning: #{Color.c(w, Color::YELLOW)}" }
+        end
+      end
+      puts ""
+    end
+
+    # 9. LLMS.txt & AI Search
+    def self.handle_llms_command(target, extra, options)
+      base_url = target || "https://#{Config.default_domain || 'example.com'}"
+      llms = GSC::LlmsGenerator.new(base_url)
+
+      if extra == 'audit' || options[:audit]
+        data = llms.audit_ai_readability(base_url)
+        if options[:json]
+          puts JSON.pretty_generate(data)
+        else
+          puts BANNER unless options[:in_dashboard]
+          puts "🤖 #{Color::BOLD}AI SEARCH ENGINE / LLM READABILITY AUDIT:#{Color::RESET} #{Color.c(base_url, Color::CYAN)}"
+          puts "─" * 70
+          puts "AI Citation Readiness Score: #{Color.c(data[:ai_readability_score].to_s + '/100', Color::GREEN, Color::BOLD)} [Grade: #{data[:grade]}]"
+          puts "\nFeatures Detected:"
+          puts "   • Single H1 Heading : #{data.dig(:features, :h1_count) == 1 ? '✅ Yes' : '❌ No'}"
+          puts "   • Tables for Data   : #{data.dig(:features, :has_tables) ? '✅ Yes' : '❌ No'}"
+          puts "   • Bullet Lists      : #{data.dig(:features, :has_lists) ? '✅ Yes' : '❌ No'}"
+          puts "   • Structured Data   : #{data.dig(:features, :schemas_found)} schemas"
+          unless data[:issues].empty?
+            puts "\nOptimizations for Perplexity & ChatGPT:"
+            data[:issues].each { |iss| puts "   • #{Color.c(iss, Color::YELLOW)}" }
+          end
+          puts ""
+        end
+      else
+        content = llms.generate_llms_txt
+        if options[:save]
+          File.write("llms.txt", content)
+          puts Color.c("✅ Successfully wrote llms.txt to current directory!", Color::GREEN)
+        else
+          puts content
+        end
+      end
+    end
+
+    # 10. SERP & Social Preview
+    def self.handle_preview_command(target, options)
+      is_url = target.to_s.start_with?('http://', 'https://')
+      url = options[:url] || (target if is_url)
+      title = options[:title] || (target unless is_url)
+      desc = options[:desc] || options[:description]
+
+      url ||= "https://#{Config.default_domain || 'example.com'}"
+
+      sp = GSC::SerpPreview.new(url, title: title, desc: desc)
+      data = sp.generate
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      m = data[:metrics] || {}
+
+      puts "🖥️ #{Color::BOLD}GOOGLE SERP PREVIEW (Desktop Viewport):#{Color::RESET}"
+      puts "┌─────────────────────────────────────────────────────────────────────────┐"
+      puts "│ #{Color.c(data.dig(:desktop_serp, :breadcrumb).to_s.ljust(71), Color::DIM)}│"
+      puts "│ #{Color.c(data.dig(:desktop_serp, :title).to_s.ljust(71), Color::BLUE, Color::BOLD)}│"
+      puts "│ #{Color.c(data.dig(:desktop_serp, :snippet).to_s[0..70].ljust(71), Color::DIM)}│"
+      puts "└─────────────────────────────────────────────────────────────────────────┘"
+
+      t_status = if m[:title_truncated]
+                   Color.c("⚠️ TRUNCATED (+#{(m[:title_pixel_est] - m[:title_desktop_limit]).round(1)}px over 580px limit)", Color::YELLOW, Color::BOLD)
+                 else
+                   Color.c('✅ OPTIMAL (< 580px desktop limit)', Color::GREEN, Color::BOLD)
+                 end
+
+      d_status = if m[:desc_truncated]
+                   Color.c("⚠️ TRUNCATED (+#{(m[:desc_pixel_est] - m[:desc_desktop_limit]).round(1)}px over 960px limit)", Color::YELLOW, Color::BOLD)
+                 else
+                   Color.c('✅ OPTIMAL (< 960px desktop limit)', Color::GREEN, Color::BOLD)
+                 end
+
+      puts "   • Title Width:       #{m[:title_chars]} chars / ~#{m[:title_pixel_est]}px  [#{t_status}]"
+      puts "   • Description Width: #{m[:desc_chars]} chars / ~#{m[:desc_pixel_est]}px  [#{d_status}]"
+
+      puts "\n📱 #{Color::BOLD}GOOGLE SERP PREVIEW (Mobile Viewport):#{Color::RESET}"
+      puts "┌─────────────────────────────────────────────────────────────────────────┐"
+      puts "│ #{Color.c(data.dig(:mobile_serp, :breadcrumb).to_s.ljust(71), Color::DIM)}│"
+      puts "│ #{Color.c(data.dig(:mobile_serp, :title).to_s.ljust(71), Color::BLUE, Color::BOLD)}│"
+      puts "│ #{Color.c(data.dig(:mobile_serp, :snippet).to_s[0..70].ljust(71), Color::DIM)}│"
+      puts "└─────────────────────────────────────────────────────────────────────────┘"
+
+      soc = data[:social] || {}
+      if soc[:og_title] || soc[:og_image]
+        puts "\n🌐 #{Color::BOLD}OPEN GRAPH / SOCIAL CARD PREVIEW:#{Color::RESET}"
+        puts "   • Title       : #{soc[:og_title]}"
+        puts "   • Description : #{soc[:og_description]}"
+        puts "   • Card Image  : #{soc[:og_image] || '(No og:image specified)'}"
+      end
+      puts ""
+    end
+
+    # 10b. IndexNow Multi-Engine Instant Indexing (Bing, Yandex, Seznam, Naver)
+    def self.handle_indexnow_command(target, extra, options)
+      if target == 'key' || target == 'connect'
+        if extra && !extra.strip.empty?
+          key = IndexNow.set_key(extra)
+          puts Color.c("✅ Successfully set IndexNow API key to: #{key}", Color::GREEN, Color::BOLD)
+        else
+          key = IndexNow.get_or_create_key
+          host = Config.default_domain || 'yourdomain.com'
+          puts "🔑 #{Color::BOLD}INDEXNOW API KEY & HOST SETUP:#{Color::RESET}"
+          puts "   • Active Key:          #{Color.c(key, Color::CYAN, Color::BOLD)}"
+          puts "   • Host Verification:   #{Color.c("https://#{host}/#{key}.txt", Color::BLUE)}"
+          puts "   • Required Content:    #{Color.c(key, Color::BOLD)}"
+          puts "\n💡 #{Color.c('Verification Tip:', Color::YELLOW)} Create a plain text file at the root of your web server named '#{key}.txt' with '#{key}' as the content."
+        end
+        return
+      end
+
+      if target == 'sitemap' || target.to_s.end_with?('.xml')
+        sitemap_target = (target == 'sitemap') ? extra : target
+        handle_indexnow_sitemap_command(sitemap_target, options)
+        return
+      end
+
+      target_url = target || options[:url]
+      unless target_url
+        if Config.default_domain
+          target_url = "https://#{Config.default_domain}"
+        else
+          raise 'Please provide a URL to index (e.g. gsc indexnow https://example.com/new-page) or connect a default domain.'
+        end
+      end
+
+      urls = [target_url]
+      urls << extra if extra && extra.start_with?('http')
+
+      key = options[:key] || IndexNow.get_or_create_key
+      res = IndexNow.submit(urls, key: key)
+
+      if options[:json]
+        puts JSON.pretty_generate(res)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "⚡ #{Color::BOLD}INDEXNOW MULTI-SEARCH ENGINE SUBMISSION:#{Color::RESET}"
+      puts "─" * 75
+      status_color = res[:success] ? Color::GREEN : Color::RED
+      puts "Status          : #{Color.c(res[:message], status_color, Color::BOLD)}"
+      puts "Submitted URLs  : #{Color.c(res[:submitted_urls].to_s, Color::CYAN, Color::BOLD)}"
+      puts "Host            : #{res[:host]}"
+      puts "Key Location    : #{res[:key_location]}"
+      puts "Engines Notified: #{Color.c('Microsoft Bing, Yandex, Seznam, Naver', Color::BOLD)}"
+      puts "─" * 75
+
+      urls.each_with_index do |u, idx|
+        puts "   #{idx + 1}. #{Color.c(u, Color::CYAN)}"
+      end
+
+      unless res[:success]
+        puts "\n#{Color.c('⚠️ Note:', Color::YELLOW)} Ensure you have created #{res[:key_location]} with content: #{res[:key]}"
+      end
+      puts ""
+    end
+
+    def self.handle_indexnow_sitemap_command(target, options)
+      sitemap = target || options[:sitemap] || 'sitemap.xml'
+      key = options[:key] || IndexNow.get_or_create_key
+      limit = options[:limit] ? options[:limit].to_i : nil
+
+      puts BANNER unless options[:in_dashboard]
+      puts "📄 #{Color::BOLD}BATCH INDEXNOW SITEMAP SUBMISSION:#{Color::RESET} #{Color.c(sitemap, Color::CYAN)}"
+      puts "─" * 75
+
+      res = IndexNow.submit_sitemap(sitemap, key: key, limit: limit)
+
+      if options[:json]
+        puts JSON.pretty_generate(res)
+        return
+      end
+
+      status_color = res[:success] ? Color::GREEN : Color::RED
+      puts "Status          : #{Color.c(res[:message], status_color, Color::BOLD)}"
+      puts "URLs Submitted  : #{Color.c(res[:submitted_urls].to_s, Color::GREEN, Color::BOLD)}"
+      puts "Host            : #{res[:host]}"
+      puts "Engines Notified: #{Color.c('Microsoft Bing, Yandex, Seznam, Naver', Color::BOLD)}"
+      puts "─" * 75
+      puts "✨ All URLs pushed to IndexNow instant crawl queue."
+      puts ""
+    end
+
+    # 11. Network & Redirect Tracer
+    def self.handle_trace_command(target, options)
+      url = target || Config.default_domain || 'example.com'
+      nt = GSC::NetworkTracer.new(url)
+      data = nt.trace
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "🛤️ #{Color::BOLD}REDIRECT CHAIN & HTTP HEADER TRACE:#{Color::RESET} #{Color.c(url, Color::CYAN)}"
+      puts "─" * 75
+      puts "Total Hops: #{data[:total_hops]} | Duration: #{data[:total_duration_ms]}ms"
+
+      (data[:hops] || []).each do |hop|
+        status_c = (hop[:status_code] == 200) ? Color::GREEN : Color::YELLOW
+        puts "\nHop ##{hop[:hop]}: #{Color.c(hop[:status_code].to_s, status_c, Color::BOLD)} (#{hop[:duration_ms]}ms)"
+        puts "   URL:    #{hop[:url]}"
+        puts "   X-Robots-Tag: #{Color.c(hop[:x_robots_tag], Color::RED)}" if hop[:x_robots_tag]
+        puts "   Canonical:    #{hop[:canonical_header]}" if hop[:canonical_header]
+        puts "   HSTS:         #{hop[:hsts] ? 'Enabled' : 'Disabled'}"
+      end
+      puts ""
+    end
+
+    # 12. Robots.txt Checker
+    def self.handle_robots_command(target, extra, options)
+      url = target || "https://#{Config.default_domain || 'example.com'}"
+      path = extra || '/'
+      bot = options[:bot] || 'googlebot'
+
+      rc = GSC::RobotsChecker.new(url)
+      data = rc.check(path, bot)
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "🤖 #{Color::BOLD}ROBOTS.TXT CRAWLER SIMULATOR:#{Color::RESET}"
+      puts "   Robots URL : #{data[:robots_url]}"
+      puts "   User Agent : #{Color.c(bot, Color::CYAN)}"
+      puts "   Test Path  : #{Color.c(path, Color::BOLD)}"
+      puts "─" * 70
+
+      status_badge = data[:allowed] ? Color.c("✅ ALLOWED", Color::GREEN, Color::BOLD) : Color.c("❌ BLOCKED (DISALLOW)", Color::RED, Color::BOLD)
+      puts "Crawl Verdict : #{status_badge}"
+      if data[:matched_rule]
+        puts "Matched Rule  : #{data[:matched_rule][:type].to_s.upcase}: #{data[:matched_rule][:path]}"
+      end
+      puts ""
+    end
+
+    # 13. Backlinks & GSC Links Ingestion
+    def self.handle_backlinks_command(target, extra, options)
+      domain = target || Config.default_domain || 'example.com'
+      bm = GSC::BacklinksManager.new(domain)
+
+      if target == 'import' || extra == 'import'
+        source = (target == 'import') ? extra : target
+        content = if source == 'clip' || source == 'clipboard'
+                    `pbpaste 2>/dev/null`
+                  elsif source && File.exist?(source)
+                    File.read(source)
+                  else
+                    nil
+                  end
+
+        if content.nil? || content.strip.empty?
+          puts Color.c("❌ Error: No content provided. Usage: gsc backlinks import [file.csv|clip]", Color::RED)
+          return
+        end
+
+        res = bm.import_csv(content)
+        if options[:json]
+          puts JSON.pretty_generate(res)
+        else
+          puts Color.c("✅ Successfully imported GSC backlink export!", Color::GREEN, Color::BOLD)
+          puts "   Referring Domains : #{res[:sources_count]}"
+          puts "   Target Pages      : #{res[:targets_count]}"
+        end
+        return
+      end
+
+      data = bm.summary
+
+      if options[:json]
+        puts JSON.pretty_generate(data)
+        return
+      end
+
+      puts BANNER unless options[:in_dashboard]
+      puts "🔗 #{Color::BOLD}GSC BACKLINK & REFERRING DOMAIN INTELLIGENCE:#{Color::RESET} #{Color.c(domain, Color::CYAN)}"
+      puts "─" * 75
+      puts "Total Referring Domains : #{Color.c(data[:total_referring_domains].to_s, Color::BOLD)}"
+      puts "Total External Links    : #{Color.c(data[:total_external_links].to_s, Color::BOLD)}"
+      puts "Last Updated            : #{data[:updated_at] || 'Never (Run `gsc backlinks import` to ingest GSC export)'}"
+      puts "─" * 75
+
+      sources = data[:top_referring_domains] || []
+      unless sources.empty?
+        puts "\n#{Color::BOLD}🌐 TOP REFERRING SITES:#{Color::RESET}"
+        sources.each do |s|
+          puts "   • #{s['domain'].to_s.ljust(45)} #{Color.c(s['links_count'].to_s.rjust(6) + ' links', Color::CYAN)}"
+        end
+      end
+
+      targets = data[:top_target_pages] || []
+      unless targets.empty?
+        puts "\n#{Color::BOLD}🎯 TOP LINKED LANDING PAGES:#{Color::RESET}"
+        targets.each do |t|
+          puts "   • #{t['target_url'].to_s.ljust(45)} #{Color.c(t['incoming_count'].to_s.rjust(6) + ' links', Color::GREEN)}"
+        end
+      end
+      puts ""
+    end
+  end
+end
+
 # --- cli.rb ---
 module GSC
   # CLI Command Runner
@@ -2882,6 +4954,18 @@ opts.on('--report PATH', 'Export comprehensive Markdown audit report (e.g. docs/
   options[:report] = path
 end
 
+opts.on('--title TITLE', 'Custom page title for SERP simulator') do |t|
+  options[:title] = t
+end
+
+opts.on('--desc DESC', 'Custom meta description for SERP simulator') do |d|
+  options[:desc] = d
+end
+
+opts.on('--key KEY', 'API key for IndexNow or service accounts') do |k|
+  options[:key] = k
+end
+
 opts.on('--dry-run', 'Simulate API calls without mutating data') do
           options[:dry_run] = true
         end
@@ -2983,8 +5067,18 @@ when 'llms', 'ai-ready'
   exit 0 unless options[:in_dashboard]
   return if options[:in_dashboard]
 
-when 'preview', 'serp-preview', 'social-preview'
+when 'preview', 'serp', 'serp-preview', 'social-preview'
   handle_preview_command(target, options)
+  exit 0 unless options[:in_dashboard]
+  return if options[:in_dashboard]
+
+when 'indexnow', 'in'
+  handle_indexnow_command(target, extra, options)
+  exit 0 unless options[:in_dashboard]
+  return if options[:in_dashboard]
+
+when 'indexnow-sitemap', 'ins'
+  handle_indexnow_sitemap_command(target, options)
   exit 0 unless options[:in_dashboard]
   return if options[:in_dashboard]
 
@@ -3080,6 +5174,8 @@ when 'version', '-v', '--version'
       when 'connect', 'setup', 'init', 'install'
         if target.to_s.downcase == 'ke' || target.to_s.downcase == 'keywordseverywhere'
           handle_connect_ke_wizard(extra)
+        elsif target.to_s.downcase == 'indexnow' || target.to_s.downcase == 'in'
+          handle_indexnow_command('connect', extra, options)
         else
           handle_connect_wizard
         end

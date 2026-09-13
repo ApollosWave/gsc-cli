@@ -38,11 +38,13 @@ require_relative 'gsc/serp_preview'
 require_relative 'gsc/network_tracer'
 require_relative 'gsc/robots_checker'
 require_relative 'gsc/backlinks_manager'
+require_relative 'gsc/indexnow'
 require_relative 'gsc/command_registry'
 require_relative 'gsc/cli_advanced'
 require_relative 'gsc/cli'
 
 # Top-level aliases for compatibility
+IndexNow           = GSC::IndexNow unless defined?(IndexNow)
 GoogleTrends       = GSC::GoogleTrends unless defined?(GoogleTrends)
 KeywordPlanner     = GSC::KeywordPlanner unless defined?(KeywordPlanner)
 KeywordsEverywhere = GSC::KeywordsEverywhere unless defined?(KeywordsEverywhere)

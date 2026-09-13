@@ -56,7 +56,21 @@ task :"build:standalone" do
     "prompts.rb",
     "page_analyzer.rb",
     "site_crawler.rb",
+    "google_suggest.rb",
+    "open_page_rank.rb",
+    "page_speed.rb",
+    "page_comparator.rb",
+    "content_gap.rb",
+    "internal_links.rb",
+    "schema_validator.rb",
+    "llms_generator.rb",
+    "serp_preview.rb",
+    "network_tracer.rb",
+    "robots_checker.rb",
+    "backlinks_manager.rb",
+    "indexnow.rb",
     "command_registry.rb",
+    "cli_advanced.rb",
     "cli.rb"
   ]
 

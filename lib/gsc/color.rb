@@ -16,7 +16,8 @@ module GSC
     GRAY      = "\e[90m"
 
     def self.c(text, *styles)
-      "#{styles.join}#{text}#{RESET}"
+      t = text.to_s.dup.force_encoding('UTF-8').scrub
+      "#{styles.join}#{t}#{RESET}"
     end
   end
 end
