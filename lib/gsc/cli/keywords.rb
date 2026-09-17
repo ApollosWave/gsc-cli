@@ -384,7 +384,7 @@ module GSC
             key = input unless input.nil? || input.empty?
             key = existing if key.empty?
           else
-            puts "Get your Keywords Everywhere API key at: #{Color.c('https://keywordseverywhere.com/', Color::UNDERLINE)}"
+            puts "Get your Keywords Everywhere API key at: #{Color.c('https://keywordseverywhere.com/?fpr=us25sg', Color::UNDERLINE)}"
             print "Paste your Keywords Everywhere API Key: "
             key = $stdin.gets&.strip
           end
@@ -415,7 +415,7 @@ module GSC
             puts "  2. #{Color.c('100% Free Live Google Trends (Breakout & Related terms):', Color::BLUE, Color::BOLD)}"
             puts "     • Run: #{Color.c('gsc trends "seo audit"', Color::BLUE, Color::BOLD)}"
             puts "  3. #{Color.c('Top Up Credits for Automated Background CLI Lookups:', Color::GRAY, Color::BOLD)}"
-            puts "     • Purchase credits at: https://keywordseverywhere.com/credit-packages.html"
+            puts "     • Purchase credits at: https://keywordseverywhere.com/credit-packages.html?fpr=us25sg"
             puts "     • Your key is already saved; it will work immediately upon top-up.\n"
           else
             puts "\nTry searching keywords:"
@@ -440,7 +440,7 @@ module GSC
             puts "\n" + Color.c("ℹ️ You have 0 paid REST API credits remaining.", Color::YELLOW)
             puts "• Free Web Alternative: Check volume on keywordseverywhere.com, click 'Copy', then run: #{Color.c('gsc import clip', Color::CYAN)}"
             puts "• Free Live Trends: #{Color.c('gsc trends "seo audit"', Color::BLUE)}"
-            puts "• Top up credits at: https://keywordseverywhere.com/credit-packages.html"
+            puts "• Top up credits at: https://keywordseverywhere.com/credit-packages.html?fpr=us25sg"
           end
         else
           if acct[:error].to_s =~ /401|Unauthorized/i
@@ -477,7 +477,7 @@ module GSC
           else
             puts Color.c("\n❌ Keywords Everywhere API key not configured!\n", Color::RED, Color::BOLD)
             puts "#{Color::BOLD}RECOMMENDATIONS:#{Color::RESET}"
-            puts "  1. Connect a key: #{Color.c('gsc connect ke', Color::CYAN, Color::BOLD)} (Get key at https://keywordseverywhere.com/)"
+            puts "  1. Connect a key: #{Color.c('gsc connect ke', Color::CYAN, Color::BOLD)} (Get key at https://keywordseverywhere.com/?fpr=us25sg)"
             puts "  2. Use 100% free Google Trends (No key needed!): #{Color.c("gsc trends \"#{target}\"", Color::BLUE, Color::BOLD)}"
             puts "  3. Use 500 free daily web lookups: Copy web table -> #{Color.c('gsc import clip', Color::GREEN, Color::BOLD)}\n"
           end
@@ -524,7 +524,7 @@ module GSC
                 { action: 'import_clipboard', cmd: 'gsc import clip', desc: 'Use 500 free daily web lookups on keywordseverywhere.com and import via clipboard' },
                 { action: 'google_trends', cmd: "gsc trends \"#{target}\"", desc: '100% Free real-time search interest & rising breakout queries' },
                 { action: 'gsc_analytics', cmd: 'gsc top-queries', desc: 'Real impressions & clicks from your active Google Search Console domain' },
-                { action: 'topup', url: 'https://keywordseverywhere.com/credit-packages.html', desc: 'Purchase API credits to enable automated background CLI lookups' }
+                { action: 'topup', url: 'https://keywordseverywhere.com/credit-packages.html?fpr=us25sg', desc: 'Purchase API credits to enable automated background CLI lookups' }
               ]
             })
             return
@@ -547,13 +547,13 @@ module GSC
             puts "     • High-impression queries and Page 2 striking-distance keywords:"
             puts "       #{Color.c('gsc top-queries', Color::MAGENTA, Color::BOLD)}  or  #{Color.c('gsc opportunities', Color::MAGENTA, Color::BOLD)}\n"
             puts "  4. #{Color.c('Top Up API Credits for Automated Background CLI Lookups', Color::GRAY, Color::BOLD)}"
-            puts "     • Purchase credits at: #{Color.c('https://keywordseverywhere.com/credit-packages.html', Color::UNDERLINE)}"
+            puts "     • Purchase credits at: #{Color.c('https://keywordseverywhere.com/credit-packages.html?fpr=us25sg', Color::UNDERLINE)}"
             puts "     • Your key is already saved; it will work immediately once credited.\n"
           elsif err_str =~ /401|Unauthorized/i
             puts Color.c("\n🔑 Invalid or Expired Keywords Everywhere API Key", Color::RED, Color::BOLD)
             puts "Your API key was rejected by api.keywordseverywhere.com (HTTP 401).\n\n"
             puts "#{Color::BOLD}RECOMMENDATIONS:#{Color::RESET}"
-            puts "  • Check or generate your API key at: #{Color.c('https://keywordseverywhere.com/first-install-addon.html', Color::UNDERLINE)}"
+            puts "  • Check or generate your API key at: #{Color.c('https://keywordseverywhere.com/first-install-addon.html?fpr=us25sg', Color::UNDERLINE)}"
             puts "  • Reconnect key: #{Color.c('gsc connect ke <KEY>', Color::CYAN, Color::BOLD)}"
             puts "  • Or use free Google Trends without any key: #{Color.c("gsc trends \"#{target}\"", Color::BLUE)}"
           elsif err_str =~ /429|Rate Limit/i

@@ -152,9 +152,12 @@ gsc import clip
 
 ### Option B: Direct API Integration
 If you prefer automated terminal lookups without using the browser extension:
-1. Get an API key from [Keywords Everywhere](https://keywordseverywhere.com/) ($1.25 one-time for 100,000 credits).
+1. Get an API key from [Keywords Everywhere](https://keywordseverywhere.com/?fpr=us25sg) *(referral link that supports gsc-cli development)* ($1.25 one-time for 100,000 credits).
 2. Save your key:
 ```bash
+gsc connect ke <YOUR_API_KEY>
+
+# Or manually:
 gsc config set keywords_everywhere_api_key your_ke_api_key_here
 
 # Or pass as environment variable

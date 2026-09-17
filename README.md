@@ -93,7 +93,7 @@ By implementing Google's JWT service account authentication in pure `OpenSSL` an
 - 🩺 **Zero-Gem Cold-Start Doctor (`gsc doctor`)**: Verifies 100% standard library purity, measures sub-50ms execution speed, and validates credential security.
 - 📈 **Real-Time Google Trends Engine (`gsc trends`)**: 5-year and 1-year search trajectory, velocity percentages, Unicode sparklines (` ▂▃▄▅▆▇█`), and regional demand breakdowns with zero authentication.
 - 🎯 **Zero-Auth Keyword Planner (`gsc planner`)**: Instant seed expansion via Google Autocomplete with automated search intent classification (`Informational`, `Commercial`, `Transactional`).
-- 💰 **Keywords Everywhere Ingestion (`gsc import clip` & `gsc ke`)**: Ingest free keyword tables directly from clipboard (zero credits required) or connect paid API keys for 1-step automated terminal lookups.
+- 💰 **Keywords Everywhere Ingestion (`gsc import clip` & `gsc ke`)**: Ingest free keyword tables directly from clipboard (zero credits required) or connect a [Keywords Everywhere API key](https://keywordseverywhere.com/?fpr=us25sg) *(referral link)* for automated terminal lookups.
 - 🚀 **Instant Googlebot Re-Indexing (`gsc index`)**: Ping Google's Indexing API with `URL_UPDATED` or `URL_DELETED` for priority crawl queueing within seconds.
 - ⚡ **Multi-Engine IndexNow Protocol (`gsc indexnow`)**: Instantly submit pages and sitemaps across Microsoft Bing, Yandex, Seznam, and Naver simultaneously.
 - 🖥️ **Google SERP & Title Pixel Simulator (`gsc serp`)**: Simulate desktop (580px) and mobile (650px) Google SERP cards, calculate precise proportional pixel widths, and prevent truncation before publishing.
