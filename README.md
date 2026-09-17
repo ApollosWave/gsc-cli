@@ -1,7 +1,7 @@
-# 🚀 High-Growth Operators & Autonomous AI Agents: The Zero-Dependency Google Search Console, AIO Hunter & Instant Indexing Engine
+# 🚀 GSC-CLI: The Zero-Gem Google Search Console & Technical SEO Engine in Pure Ruby
 
 > **Zero Gem Dependencies.** Pure Ruby standard library (`Net::HTTP`, `OpenSSL`, `JSON`).  
-> **The Sub-50ms Organic Growth Mandate:** Extract ground-truth Google rankings, capture Google AI Overviews, and automate technical SEO in **< 50 milliseconds** — *even if you manage 50 client domains, don't have a Google Service Account key yet, or run offline AI coding agents with strict token budgets.*
+> **Sub-millisecond Google Search Console inspection, instant Googlebot indexing, and AI Overview detection in pure standard library.** Extract first-party Google rankings, automate technical SEO audits, and generate server-side remediation rules in **< 50 milliseconds** with zero external dependencies.
 
 [![Ruby](https://img.shields.io/badge/Ruby-3.0%2B-red.svg?logo=ruby&logoColor=white)](https://www.ruby-lang.org)
 [![Gem Version](https://badge.fury.io/rb/gsc-cli.svg)](https://rubygems.org/gems/gsc-cli)
@@ -15,45 +15,34 @@
 ---
 
 <p align="center">
-  <b>gsc-cli</b> is a free, open-source initiative built and maintained by 
+  <b>gsc-cli</b> is a free, open-source project licensed under MIT and maintained by 
   <a href="https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>ApollosWave LLC</b></a>.
 </p>
 
-<p align="center">
-  <sub>Explore other software built by our team:</sub><br>
-  ⚡ <a href="https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Superspeed</b></a> — Built for Shopify speed, CRO & revenue leak intelligence app (5.0 ★)<br>
-  🛒 <a href="https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Supercart</b></a> — Built for Shopify slide cart drawer, in-house shipping protection & upsells (5.0 ★)<br>
-  📦 <a href="https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>PackingLog</b></a> — Smart QR-code box inventory & photo catalog for residential & office moves
-</p>
+---
+
+## ⚡ Why We Built This: Escaping the 40-Gem Tax
+
+Every software engineer, technical SEO, and developer-operator managing search presence faces the exact same architectural frustrations:
+
+1. **The 40-Gem Dependency Tax**: The official Google API Ruby gems (`google-apis-searchconsole_v1`, `google-apis-indexing_v3`, `googleauth`, `signet`, `faraday`) pull in **40+ transitive gem dependencies**. They add 3 to 5 seconds to cold-boot time, trigger Bundler version conflicts, inflate container image sizes, and introduce ongoing supply-chain vulnerability alerts.
+2. **Paying $300 to $1,000+/Month for Sampled Guesswork**: Third-party SEO suites charge hundreds of dollars per month to scrape search results with external proxy farms and estimate traffic using sampled third-party panels. Meanwhile, **Google Search Console provides 100% first-party ground-truth data** for your domain directly from production search logs—completely free.
+3. **Google Search Console's Web UI Does Not Scale**: Inspecting 50 URLs, isolating soft-404 indexation drops, or detecting cannibalization across multiple client properties requires hours of manual tab switching, filtering, and clicking.
+4. **Google AI Overviews (AIO) Intercepting Search Clicks**: Zero-click searches continue to expand. If technical content is not structured for citation in Gemini and AI Overviews, organic visibility drops even when ranking on Page 1.
+5. **AI Coding Agents Cannot Click Web Buttons**: Modern coding agents (Antigravity, Claude Code, Cursor, Cline) require deterministic, sub-50ms JSON over stdout to diagnose and fix search issues directly inside the local repository.
+
+To solve this, we refused to bloat our services with 40 gems or waste hours navigating web dashboards. We engineered a **single, standalone, pure-Ruby CLI** that communicates directly with Google's bare-metal HTTP APIs using native `OpenSSL` and `Net::HTTP` in **under 50 milliseconds**.
+
+We open-sourced **`gsc-cli`** under the MIT License so any developer or team can inspect, index, and automate search intelligence with zero dependency overhead.
 
 ---
 
-## ⚡ The Brutal Truth About Modern SEO (And Why We Built GSC CLI)
+## 📐 Core Engineering Principles
 
-Every software founder, growth engineer, and indie builder faces the exact same bleeding bottlenecks:
-
-1. **Bleeding $300 to $1,000+/Month on SEO Tool Fees for Sampled Guesswork**: Third-party estimation suites charge $300 to $1,000+ every month to scrape search results with external proxies and model keyword volumes from sampled databases. Meanwhile, **Google already has the exact, 100% first-party ground-truth data** for your site sitting inside Search Console—completely free.
-2. **Official Google API Gems Are Bloated Monsters**: The official Google API Ruby gems (`google-apis-searchconsole_v1`, `google-apis-indexing_v3`, `googleauth`) drag in **40+ transitive gem dependencies**, take 3 to 5 seconds just to boot, trigger bundle conflicts, and introduce constant supply-chain vulnerabilities.
-3. **Google Search Console's Web UI is Insultingly Slow**: Clicking through Google Search Console's web interface to inspect 50 URLs, check soft-404 errors, or spot cannibalization takes hours of repetitive clicking, filtering, and tab-switching.
-4. **Google AI Overviews (AIO) Are Stealing 40% of Clicks**: Zero-click searches are skyrocketing. If your content isn't structured for direct citation in Google Gemini / AI Overviews, your organic traffic drops even if you rank on Page 1.
-5. **AI Coding Agents Cannot Click Web Buttons**: Modern coding agents (Antigravity, Claude Code, Cursor, Cline) need raw, deterministic, sub-50ms JSON over stdout to diagnose and fix SEO issues autonomously inside your codebase.
-
-### The Origin of GSC-CLI
-At **[ApollosWave](https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**, we run multiple production software businesses—from Shopify revenue & speed intelligence (**[Superspeed](https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**) and e-commerce upsell apps (**[Supercart](https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**) to physical moving inventory SaaS (**[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**).
-
-We refused to bloat our applications with 40 gems or waste 10 hours a week clicking in Search Console. We needed a **single, standalone, pure-Ruby CLI** that communicates directly with Google's bare-metal HTTP APIs using native `OpenSSL` and `Net::HTTP` in **under 50 milliseconds**.
-
-We built **`gsc-cli`** to run our own marketing operations. **We open-sourced it 100% free under the MIT License** so other builders can scale organic search traffic without the corporate SEO tax.
-
----
-
-## 💎 The 5 Immutable Truths of Modern Organic Growth
-
-1. **Compounding Organic Acquisition**: You didn't build your software to burn half your runway on paid ads. You built it to create a compounding, self-sustaining organic acquisition engine that pulls in qualified customers day and night on autopilot.
-2. **First-Party Ground Truth Over Guesswork**: You always suspected that third-party scraping tools and panel-based traffic estimators don't have Google's private internal search logs for your domain. You were right. External proxy estimators rely on sampled clickstream models; meanwhile, Google Search Console stores the exact, 100% first-party click and impression ground truth directly from Google's production infrastructure—completely free.
-3. **Liberation from the 40-Gem Tax**: Official Google API gems drag in 40+ dependency gems, slow down boot times to 4+ seconds, trigger bundle conflicts, and introduce constant supply-chain alerts. GSC-CLI communicates directly with Google's bare-metal HTTP APIs using pure Ruby standard library in **< 1 millisecond**.
-4. **Zero-Trust Local Execution & Anti-Slop Guarantee**: Developers are tired of untrusted scripts that require root privileges or send your private code to remote AI servers. `gsc-cli` is **not an AI slop wrapper**. It runs 100% locally with zero external gem dependencies, zero telemetry, and zero remote code ingestion.
-5. **Actionable Remediation Over Passive Error Tables**: Traditional SEO auditing tools spit out 500 error rows but leave you stranded without actionable fixes. GSC-CLI diagnoses soft-404 traps and automatically synthesizes copy-paste redirect blocks for 14 server environments.
+1. **First-Party Ground Truth Over Guesswork**: Third-party estimation suites rely on sampled clickstream models and external proxy scraping. Google Search Console stores the exact, 100% first-party click, impression, and position data directly from Google's search infrastructure—completely free.
+2. **Zero-Dependency Purity (< 1ms Boot Time)**: Official Google API gems drag in 40+ dependency gems, slowing down boot times and creating dependency lock-in. GSC-CLI communicates directly with Google's bare-metal HTTP APIs using pure Ruby standard library (`Net::HTTP`, `OpenSSL`, `JSON`), executing in **< 1 millisecond**.
+3. **Actionable Remediation Over Passive Error Dumps**: Most diagnostic tools dump hundreds of error rows into a table without solutions. `gsc-cli` pairs forensic diagnostics with automated remediation—such as generating copy-paste redirect blocks for 14 server environments (Nginx, Caddy, Cloudflare, Next.js, Vercel, etc.) for soft-404 traps.
+4. **Zero-Trust Local Execution (No Telemetry, No External AI Calls)**: Developer tools should respect machine resources and codebase privacy. `gsc-cli` runs 100% locally, requires zero external LLM API keys, makes zero calls to third-party AI servers, collects zero telemetry, and never reads or transmits private repository files.
 
 ---
 
@@ -97,26 +86,24 @@ By implementing Google's JWT service account authentication in pure `OpenSSL` an
 
 ---
 
-## 🔄 The Transformation: Nightmare Status Quo vs. The GSC-CLI Way
+## ⚡ Architectural Comparison & Trade-Offs
 
-| Nightmare Status Quo | The GSC-CLI Transformation |
+| Traditional Stack (Official SDK / SaaS) | GSC-CLI Architecture |
 | :--- | :--- |
-| **Manual Clicking Trap**: Clicking through 15 tabs in Google Search Console to inspect 50 URLs (takes 45+ minutes). | **Instant 1-Command Batching**: `gsc inspect-sitemap sitemap.xml` inspects all URLs with automatic quota pacing in seconds. |
+| **Manual Web UI Bottleneck**: Clicking through 15 tabs in Google Search Console to inspect 50 URLs takes 45+ minutes. | **Instant 1-Command Batching**: `gsc inspect-sitemap sitemap.xml` inspects all URLs with automatic quota pacing in seconds. |
 | **Sampled Third-Party Guesswork**: Paying $300–$1,000+/mo ($3,600–$12,000/yr) for external proxy scrapers that model keyword volumes. | **100% Google Ground Truth ($0)**: Raw impression, click, and position logs direct from Google Search Console. |
-| **40-Gem Dependency Hell**: Bloating your `Gemfile` with Google SDK gems that add 4 seconds to cold boot. | **0 Gem Dependencies**: Pure Ruby standard library (`OpenSSL`, `Net::HTTP`, `JSON`) executing in **< 1 millisecond**. |
-| **Multi-Client Credential Chaos**: Juggling loose JSON keys across client folders and risking credential leaks. | **Agency Credential Vault (`gsc vault`)**: Local AES-256-GCM encrypted vault with instant domain switching (`gsc switch`). |
+| **40-Gem Dependency Tax**: Bloating your `Gemfile` with Google SDK gems that add 3–5 seconds to cold boot. | **0 Gem Dependencies**: Pure Ruby standard library (`OpenSSL`, `Net::HTTP`, `JSON`) executing in **< 1 millisecond**. |
+| **Multi-Client Credential Chaos**: Juggling loose JSON keys across folders and risking credential leaks. | **Agency Credential Vault (`gsc vault`)**: Local AES-256-GCM encrypted vault with instant domain switching (`gsc switch`). |
 | **Passive Error Reporting**: Diagnostic tools tell you that you have 404s, but leave you to write the server rules. | **Active Automated Remediation**: `gsc soft-404 <url> --fix nginx` synthesizes instant, copy-paste server blocks for 14 stacks. |
 | **Blind to AI Overviews**: Unaware that Google Gemini / AI Overviews are intercepting 40% of zero-click searches. | **Google AIO Hunter & Citation Simulator**: `gsc aio-hunter` identifies AI Overviews and extracts competitor citation recipes. |
 | **Token-Guzzling JSON in AI Agents**: Feeding pretty-printed JSON into coding agents wastes 40% of your LLM context window. | **Ultra-Low Token Modes (`--compact`, `--ndjson`)**: Minified output saving **35–50% of tokens** for Claude Code, Cursor, and Antigravity. |
-| **Untrusted Scripts Touching Code**: Running opaque scripts that scan your repository and send files to third parties. | **Zero-Trust Local Execution**: Completely isolated, deterministic UNIX tool. Never scans, reads, or transmits your private code. |
+| **Untrusted Third-Party Scripts**: Running opaque scripts that scan your repository or send files to external servers. | **Zero-Trust Local Execution**: Completely isolated, deterministic UNIX tool. Never scans, reads, or transmits your private code. |
 
 ---
 
-> ### ⭐ Join the Zero-Bloat SEO Revolution
-> **Did `gsc-cli` save your team from 40 bloated Google gems, bypass the $300–$1,000+/mo SEO suite tax, or give your AI agents instant sub-50ms search ground truth?**  
-> 
-> Help fellow engineers and operators discover zero-dependency tooling:  
-> 👉 **[Drop a Star on GitHub](https://github.com/ApollosWave/gsc-cli)** — *even if you only use it for terminal sparklines, instant Googlebot indexing, or AI Overview detection.* It takes 2 seconds and directly fuels continuous open-source development!
+> ### ⭐ Star the Repository
+> If `gsc-cli` saved your team from 40 bloated gems or streamlined your search data pipeline:  
+> 👉 **[Star GSC CLI on GitHub](https://github.com/ApollosWave/gsc-cli)** to support zero-dependency open-source tooling.
 
 ---
 
@@ -534,6 +521,8 @@ gsc use 2
 
 ## 🤖 AI Agent Native Integration (Antigravity, Claude, Cursor)
 
+> 💡 **Zero External LLM Calls**: `gsc-cli` does NOT require an OpenAI or Anthropic API key and sends zero data to third-party AI servers. Everything runs locally on your machine. "AI Agent Native" refers to our deterministic `--compact` (minified JSON) and `--ndjson` flags designed to save 35–45% context tokens when called by local coding agents (Claude Code, Cursor Composer, Antigravity).
+
 `gsc-cli` was engineered from the ground up to serve as the high-speed sensory organ for autonomous AI coding agents (**Antigravity**, **Claude Code**, **Cursor Composer**, **Windsurf**, and **OpenCode**). 
 
 Traditional CLI tools output ANSI-colored terminal text designed exclusively for human eyes—forcing AI agents to burn thousands of tokens scraping strings, guessing table columns, and hallucinating missing fields. `gsc-cli` eliminates this waste completely with **sub-millisecond execution**, **zero gem overhead**, and **three ultra-efficient machine output formats**.
@@ -719,18 +708,12 @@ GSC CLI is maintained by [ApollosWave LLC](https://apolloswave.com/?utm_source=g
 
 ---
 
-## 📬 A Personal Note from the Maintainers
+## ⚖️ Open Source Philosophy & License
 
-**P.S.** If you've made it this far, you already know that relying on manual web dashboards and bloated dependencies is quietly costing your team hours every single week. Installing `gsc-cli` takes **under 10 seconds** (`gem install gsc-cli` or via our 1-line curl installer). In less time than it takes to log into Google Search Console, you can have sub-50ms ground-truth rankings streaming directly in your terminal.
+`gsc-cli` is 100% free, open-source software licensed under the **[MIT License](LICENSE)**.
 
-**P.P.S.** Search has entered the most volatile shift in 20 years. Google AI Overviews are expanding across global queries every week, capturing clicks before users ever reach blue links. Every day your landing pages have unmonitored soft-404 errors, mobile rank suppression, or unstructured headings, you are leaking qualified organic customers to competitors who took 5 minutes to optimize their citation readiness.
+We built this because we believe command-line developer tools should be fast, transparent, and respect your machine's resources. The modern Ruby standard library is more than capable of handling enterprise-grade API integrations and cryptographic authentication without dragging in 40 third-party gems.
 
-**P.P.P.S.** `gsc-cli` is 100% free, MIT licensed, and backed by production businesses that rely on it daily. There are no surprise credit limits, no vendor lock-in, and zero third-party dependencies. If it saves your team even one afternoon of manual SEO busywork, drop a star on the repo and share it with a fellow builder.
+If `gsc-cli` saves your team time, eliminates an unnecessary SaaS subscription, or accelerates your search pipelines, stars, feedback, and pull requests are always welcome.
 
-👉 **[Get Started Now with 1-Click Install](#-quick-installation)** | **[Drop a Star on GitHub ⭐](https://github.com/ApollosWave/gsc-cli)**
-
----
-
-## 📄 License
-
-This project is open-source software licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+👉 **[Get Started with 1-Click Install](#-quick-installation)** | **[Star on GitHub ⭐](https://github.com/ApollosWave/gsc-cli)**
