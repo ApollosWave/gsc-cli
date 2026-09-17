@@ -23,7 +23,7 @@
   <sub>Explore other software built by our team:</sub><br>
   ⚡ <a href="https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Superspeed</b></a> — Built for Shopify speed, CRO & revenue leak intelligence app (5.0 ★)<br>
   🛒 <a href="https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Supercart</b></a> — Built for Shopify slide cart drawer, in-house shipping protection & upsells (5.0 ★)<br>
-  📦 <a href="https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>PackingLog</b></a> — Smart QR-code box inventory & photo catalog for residential & office moves
+  📦 <a href="https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>PackingLog</b></a> — Our newly launched physical moving inventory and QR-code tracking SaaS — where waiting weeks for Googlebot to discover new landing pages wasn't an option.
 </p>
 
 ---
@@ -714,7 +714,7 @@ If GSC CLI saves your team hours of manual audit work or hundreds in monthly Saa
 GSC CLI is maintained by [ApollosWave LLC](https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli). Check out our products:
 - **[Superspeed](https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Autonomous Core Web Vitals & website speed optimization engine.
 - **[Supercart](https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: High-converting slide cart drawer for Shopify merchants.
-- **[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Smart QR-code moving box inventory organizer.
+- **[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Our newly launched physical moving inventory and QR-code tracking SaaS — where waiting weeks for Googlebot to discover new landing pages wasn't an option.
 
 ---
 
