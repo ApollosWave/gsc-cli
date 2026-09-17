@@ -45,7 +45,7 @@ Every software engineer, technical SEO, and developer-operator managing search p
 At **[ApollosWave](https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**, we operate multiple high-throughput production applications:
 - **[Superspeed](https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Automated Core Web Vitals, INP, and speed intelligence for high-volume Shopify storefronts.
 - **[Supercart](https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: High-converting slide cart and upsell infrastructure processing real-time e-commerce checkouts.
-- **[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Physical moving inventory and QR-code tracking SaaS.
+- **[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Our newly launched physical moving inventory and QR-code tracking SaaS — where waiting weeks for Googlebot to discover new landing pages wasn't an option.
 
 Managing Search Console indexing, sitemap trees, and SERP positions across these live codebases meant either pulling in 40+ bloated API gems, burning hours clicking in Google's web UI, or paying thousands every year for sampled proxy scrapers.
 
