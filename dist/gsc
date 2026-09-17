@@ -3,7 +3,7 @@
 
 # ==============================================================================
 # Google Search Console & Indexing API CLI Tool (Pure Ruby - Zero Gem Dependencies)
-# Standalone Single-File Distribution (Built from lib/gsc v2.2.0)
+# Standalone Single-File Distribution (Built from lib/gsc v2.2.2)
 # ==============================================================================
 
 require 'net/http'
@@ -20,7 +20,7 @@ require 'stringio'
 
 # --- version.rb ---
 module GSC
-  VERSION = '2.2.0'
+  VERSION = '2.2.2'
 end
 
 # --- color.rb ---

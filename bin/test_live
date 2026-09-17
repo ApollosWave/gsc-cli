@@ -183,7 +183,7 @@ if filtered.empty?
 end
 
 puts "\n#{BOLD}#{CYAN}╔═══════════════════════════════════════════════════════════════════════════╗#{RESET}"
-puts "#{BOLD}#{CYAN}║     🚀 GSC-CLI AUTOMATED LIVE TERMINAL SHOWCASE (v2.2.0)                  ║#{RESET}"
+puts "#{BOLD}#{CYAN}║     🚀 GSC-CLI AUTOMATED LIVE TERMINAL SHOWCASE (v2.2.2)                  ║#{RESET}"
 puts "#{BOLD}#{CYAN}╚═══════════════════════════════════════════════════════════════════════════╝#{RESET}"
 puts " Executable: #{GREEN}#{binary}#{RESET}"
 puts " Suite:      #{BOLD}#{filtered.size} of #{ALL_COMMANDS.size} production commands queued#{RESET}#{options[:showcase_only] ? " (Showcase Mode)" : " (Full Catalog)"}"

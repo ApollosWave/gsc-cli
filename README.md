@@ -621,7 +621,7 @@ Once installed, your agent automatically understands all 80 commands, flag permu
 
 ## 🥊 How GSC CLI Compares (The Zero-Bloat Advantage)
 
-| Capability | Google Search Console Web UI | Official Google API SDK (40 Gems) | Enterprise SEO Suites ($300–$1,000+/mo) | **ApollosWave/gsc-cli (v2.2.0)** |
+| Capability | Google Search Console Web UI | Official Google API SDK (40 Gems) | Enterprise SEO Suites ($300–$1,000+/mo) | **ApollosWave/gsc-cli (v2.2.2)** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Pricing** | Free ($0) | Free ($0) | $300–$1,000+/mo ($3,600–$12,000/yr) | **100% Free & Open Source ($0)** |
 | **Dependencies** | Web Browser only | 40+ transitive gems (`googleauth`, etc.) | SaaS Web Application | **0 Gems / Pure Standard Library** |
@@ -651,7 +651,7 @@ gsc-cli/
 ├── lib/
 │   ├── gsc.rb                   # Central stdlib loader
 │   └── gsc/
-│       ├── version.rb           # Semantic versioning (2.2.0)
+│       ├── version.rb           # Semantic versioning (2.2.2)
 │       ├── color.rb             # Zero-dependency ANSI formatting
 │       ├── config.rb            # Configuration persistence
 │       ├── auth.rb              # Pure OpenSSL JWT generator

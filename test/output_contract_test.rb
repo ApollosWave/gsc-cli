@@ -34,7 +34,7 @@ class OutputContractTest < Minitest::Test
     stdout, _stderr, status = run_cmd('version')
     assert status.success?
     clean = strip_ansi(stdout)
-    assert_match(/^gsc version 2\.2\.0 \(Ruby/, clean)
+    assert_match(/^gsc version #{Regexp.escape(GSC::VERSION)} \(Ruby/, clean)
     assert_includes clean, 'Executable:'
     assert_includes clean, 'Config:'
   end
@@ -63,7 +63,7 @@ class OutputContractTest < Minitest::Test
     assert status.success?
     assert_equal 1, stdout.strip.lines.size, "Compact JSON should be on a single line"
     parsed = JSON.parse(stdout)
-    assert_equal '2.2.0', parsed['version']
+    assert_equal GSC::VERSION, parsed['version']
     assert_equal 100.0, parsed.dig('certification', 'score')
   end
 
@@ -97,7 +97,7 @@ class OutputContractTest < Minitest::Test
 
   def test_doctor_json_contract
     data = run_json('doctor')
-    assert_equal '2.2.0', data['version']
+    assert_equal GSC::VERSION, data['version']
     assert data.key?('certification')
     assert_equal 100.0, data.dig('certification', 'score')
     assert_equal 'A+', data.dig('certification', 'grade')
@@ -188,7 +188,7 @@ class OutputContractTest < Minitest::Test
   def test_skill_pack_dry_run_json_contract
     data = run_json('skill-pack', '--dry-run')
     assert_equal 'gsc', data['skill_name']
-    assert_equal '2.2.0', data['version']
+    assert_equal GSC::VERSION, data['version']
     assert_equal true, data['dry_run']
     assert data.key?('skill_preview')
     assert data.key?('verification')
