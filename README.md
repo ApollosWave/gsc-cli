@@ -15,8 +15,15 @@
 ---
 
 <p align="center">
-  <b>gsc-cli</b> is a free, open-source project licensed under MIT and maintained by 
+  <b>gsc-cli</b> is a free, open-source initiative built and maintained by 
   <a href="https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>ApollosWave LLC</b></a>.
+</p>
+
+<p align="center">
+  <sub>Explore other software built by our team:</sub><br>
+  ⚡ <a href="https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Superspeed</b></a> — Built for Shopify speed, CRO & revenue leak intelligence app (5.0 ★)<br>
+  🛒 <a href="https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Supercart</b></a> — Built for Shopify slide cart drawer, in-house shipping protection & upsells (5.0 ★)<br>
+  📦 <a href="https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>PackingLog</b></a> — Smart QR-code box inventory & photo catalog for residential & office moves
 </p>
 
 ---
