@@ -639,7 +639,7 @@ Once installed, your agent automatically understands all 80 commands, flag permu
 ```text
 gsc-cli/
 ├── bin/
-│   ├── gsc                      # Standalone executable runner (< 15 lines)
+│   ├── gsc                      # Compiled single-file binary (RubyGems entry point)
 │   └── test_live                # Visual showcase & internal test harness
 ├── lib/
 │   ├── gsc.rb                   # Central stdlib loader
@@ -659,7 +659,7 @@ gsc-cli/
 │       ├── cli/                 # Modular subcommand domains (audit, keywords, growth...)
 │       └── cli.rb               # Primary command dispatcher & router
 ├── dist/
-│   └── gsc                      # Standalone bundled binary (1,368 KB)
+│   └── gsc                      # Standalone bundled binary (1-click curl & GitHub releases)
 ├── gsc.gemspec                  # Standard RubyGem specification
 ├── Rakefile                     # Build, test, and standalone install tasks
 └── install.sh                   # Universal 1-click shell installer
