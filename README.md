@@ -38,9 +38,20 @@ Every software engineer, technical SEO, and developer-operator managing search p
 4. **Google AI Overviews (AIO) Intercepting Search Clicks**: Zero-click searches continue to expand. If technical content is not structured for citation in Gemini and AI Overviews, organic visibility drops even when ranking on Page 1.
 5. **AI Coding Agents Cannot Click Web Buttons**: Modern coding agents (Antigravity, Claude Code, Cursor, Cline) require deterministic, sub-50ms JSON over stdout to diagnose and fix search issues directly inside the local repository.
 
-To solve this, we refused to bloat our services with 40 gems or waste hours navigating web dashboards. We engineered a **single, standalone, pure-Ruby CLI** that communicates directly with Google's bare-metal HTTP APIs using native `OpenSSL` and `Net::HTTP` in **under 50 milliseconds**.
+### 🛠️ Battle-Tested in Production (The Origin)
 
-We open-sourced **`gsc-cli`** under the MIT License so any developer or team can inspect, index, and automate search intelligence with zero dependency overhead.
+`gsc-cli` was not engineered in a vacuum or built as a synthetic demo. 
+
+At **[ApollosWave](https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**, we operate multiple high-throughput production applications:
+- **[Superspeed](https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Automated Core Web Vitals, INP, and speed intelligence for high-volume Shopify storefronts.
+- **[Supercart](https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: High-converting slide cart and upsell infrastructure processing real-time e-commerce checkouts.
+- **[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Physical moving inventory and QR-code tracking SaaS.
+
+Managing Search Console indexing, sitemap trees, and SERP positions across these live codebases meant either pulling in 40+ bloated API gems, burning hours clicking in Google's web UI, or paying thousands every year for sampled proxy scrapers.
+
+We built **`gsc-cli`** as our internal engine to automate Googlebot indexing and search diagnostics in **< 50 milliseconds** using pure standard-library Ruby. 
+
+We open-sourced it 100% free under the MIT License so every builder, engineering team, and operator can run first-party search automation with zero dependency bloat.
 
 ---
 
