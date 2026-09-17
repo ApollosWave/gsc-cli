@@ -186,49 +186,175 @@ gsc domains
 
 ## 🧠 Deep-Dive Feature Walkthroughs
 
-### 1. Google AI Overview (AIO) Opportunity Hunter (`gsc aio-hunter`)
+### 1. Core Search Performance: Top Queries, Pages & CTR (`gsc top-queries`, `gsc top-pages`, `gsc performance`)
 
 #### The Problem
-Google AI Overviews (Gemini in search results) are intercepting high-intent search traffic before users ever click a blue link. If an AI Overview appears for your core keywords, your CTR can crater by 40% unless your site is cited inside the AI answer box.
+Google Search Console's web UI is sluggish, hides low-volume long-tail queries behind pagination limits, and makes cross-referencing brand vs. non-brand queries painful. Exporting CSVs to spreadsheets burns 20+ minutes every time you want to check yesterday's organic clicks.
 
 #### The Solution
-`gsc aio-hunter` queries SERPs, detects AI Overviews, extracts the exact cited sources, identifies your citation gap, and generates a structured snippet capture recipe:
+`gsc-cli` streams your exact Google Search Console ground-truth performance directly into your terminal in **under 50 milliseconds**. Filter by brand, segment devices, compare date ranges, and export clean JSON or CSV in one command:
 
 ```bash
-# Hunt AI Overview presence and extract cited competitor URLs
+# Top 20 search queries with impressions, clicks, CTR, and average SERP position
+gsc top-queries --limit 20
+
+# Filter brand vs. non-brand queries automatically
+gsc top-queries --brand
+gsc top-queries --non-brand
+
+# Top indexed landing pages driving search traffic
+gsc top-pages --limit 15
+
+# Overall 30-day domain performance scorecard with device & country breakdown
+gsc performance --days 30
+
+# Retrieve 100% of all queries via automated API pagination (no 1,000-row web limit)
+gsc top-queries --all --csv > all_search_queries.csv
+```
+
+---
+
+### 2. Tactical Striking Distance Playbook & Organic CTR Curve (`gsc strike` & `gsc ctr-curve`)
+
+#### The Problem
+Most SEO reports simply dump a list of keywords without telling you **what to write, where to link, or what the revenue payoff will be**. Page 2 keywords (Positions 4–20) generate 80% of your search impressions but only 5% of your clicks.
+
+#### The Solution
+- **`gsc ctr-curve`**: Generates an empirical, non-linear CTR regression curve mapping your domain's real CTR by position against Google's global benchmarks, simulating the exact click gain of advancing to Top 3.
+- **`gsc strike`**: Automatically synthesizes a tactical Page 2 attack plan with **3 SERP-safe hook titles (< 560px)**, heading recipes, and targeted internal link anchor suggestions:
+
+```bash
+# Simulate organic CTR curve and click upside for Page 2 rankings
+gsc ctr-curve --days 30 --target-pos 3
+
+# Generate tactical Page 2 striking distance playbook
+gsc strike --limit 10
+
+# Surface quick-win CTR underperformers (Top 10 ranking but low click-through)
+gsc underperformers --min-imp 50
+
+# Export playbook directly to CSV for copywriters & content teams
+gsc strike --limit 20 --csv docs/seo/striking_playbook.csv
+```
+
+---
+
+### 3. Instant Googlebot Priority Indexing & Live URL Inspection (`gsc index`, `gsc inspect`, `gsc indexnow`)
+
+#### The Problem
+Waiting days or weeks for Googlebot to discover new landing pages or updated documentation kills organic momentum. Meanwhile, checking if Google has indexed a URL or flagged a canonical error requires tedious manual clicking inside Search Console's URL Inspection tool.
+
+#### The Solution
+`gsc-cli` communicates directly with Google's Indexing API and live URL Inspection API to check status and force priority crawling in seconds:
+
+```bash
+# Query live Google indexing verdict, assigned canonical, and crawl timestamp
+gsc inspect https://example.com/blog/core-web-vitals
+
+# Ping Googlebot to prioritize crawling a newly published or updated URL
+gsc index https://example.com/blog/core-web-vitals
+
+# Batch inspect an entire XML sitemap with automatic quota pacing
+gsc inspect-sitemap https://example.com/sitemap.xml
+
+# Multi-Engine IndexNow: Instantly notify Bing, Yandex, Seznam, and Naver simultaneously
+gsc indexnow https://example.com/blog/core-web-vitals
+```
+
+---
+
+### 4. Cannibalization, Traffic Decay & Zombie Page Detection (`gsc cannibalization`, `gsc decay`, `gsc zombies`)
+
+#### The Problem
+Internal URLs competing for the same search intent (keyword cannibalization) split page equity, causing Google to oscillate rankings between pages. Meanwhile, stealth traffic decay and dead zero-click URLs quietly drain your Google crawl budget.
+
+#### The Solution
+`gsc-cli` diagnoses algorithmic cannibalization conflicts and period-over-period decay before traffic crashes:
+
+```bash
+# Detect internal URLs fighting for the exact same queries
+gsc cannibalization
+
+# Period-over-period decay detection (28-day comparison: decaying vs surging queries)
+gsc decay --compare 28
+
+# Scan XML sitemap for 90-day zero-impression zombie pages draining crawl budget
+gsc zombies https://example.com/sitemap.xml --purge-map
+```
+
+---
+
+### 5. Zero-Cost Clipboard Keyword Ingestion & Demand Trends (`gsc import clip`, `gsc trends`, `gsc planner`)
+
+#### The Problem
+Keyword research tools either lock data behind expensive API subscriptions or leave valuable volume data trapped in disconnected browser extensions.
+
+#### The Solution
+`gsc-cli` provides zero-cost clipboard ingestion and real-time demand tracking with **zero API keys required**:
+
+```bash
+# 1. Copy any keyword table from Keywords Everywhere or Google Ads in your browser (Cmd+C)
+# 2. Run one command to parse volumes, sparklines, and cross-reference live GSC rankings:
+gsc import clip
+
+# Real-time Google Trends 5y/1y search trajectory and velocity percentage (zero-auth)
+gsc trends "technical seo audit" --geo US --time 12m
+
+# Google Autocomplete intent expander (Informational, Commercial, Transactional)
+gsc planner "nextjs seo"
+```
+
+---
+
+### 6. Detailed Off-Page + On-Page SEO Merger & Site Audit (`gsc page` & `gsc site-audit`)
+
+#### The Problem
+On-page SEO checkers (titles, headings, meta tags) live in browser extensions, completely disconnected from your real Google Search Console performance data.
+
+#### The Solution
+`gsc page` unites on-page DOM inspection with 90-day GSC search queries, clicks, and rankings in a single terminal view:
+
+```bash
+# Audit any URL combining DOM inspection with GSC 90-day search performance
+gsc page https://example.com/
+
+# Deep internal link verification: tests HTTP status codes (200, 404, 500)
+gsc page https://example.com/ --check-links
+
+# Crawl entire XML sitemaps to audit dead links, missing alts, and heading hierarchy
+gsc site-audit https://example.com/sitemap.xml --report docs/seo/site_audit_issues.md
+```
+
+---
+
+### 7. Google AI Overview (AIO) Opportunity Hunter & Citation Simulator (`gsc aio-hunter` & `gsc cite-sim`)
+
+#### The Problem
+Google AI Overviews (Gemini in search results) intercept high-intent queries before users ever reach blue links. If an AI Overview appears for your core keywords, your organic CTR can crater unless your site is cited inside the AI answer box.
+
+#### The Solution
+`gsc aio-hunter` scans live SERPs for AI Overviews, extracts cited sources, and measures your citation readiness:
+
+```bash
+# Hunt AI Overview presence and extract cited competitor sources
 gsc aio-hunter "best technical seo audit tools"
 
-# Filter by minimum impressions and export JSON for AI agents
-gsc aio-hunter --min-imp 50 --json
-```
-
----
-
-### 2. AI Citation Simulator (`gsc cite-sim`)
-
-#### The Problem
-How do you know if an LLM (ChatGPT Search, Perplexity, Gemini) will actually cite your URL when answering user queries?
-
-#### The Solution
-`gsc cite-sim` runs a local structural heuristics audit assessing citation readiness:
-- **Information Density Ratio**: High-value facts per 1,000 DOM words.
-- **Structural Heading Depth**: Clean H2/H3 question-and-answer hierarchy.
-- **Entity Markup**: Schema.org JSON-LD definitions.
-- **Citability Score (0–100)**: Clear breakdown with actionable optimization advice.
-
-```bash
+# Test how likely LLMs (Gemini, ChatGPT, Perplexity) are to cite your URL
 gsc cite-sim https://example.com/guides/core-web-vitals
+
+# Synthesize 40–60 word high-density direct answers with FAQ schema embedding
+gsc answer "what is soft 404 error"
 ```
 
 ---
 
-### 3. Soft-404 Forensic Diagnostic Engine with Instant Stack Fixes (`gsc soft-404`)
+### 8. Soft-404 Forensic Diagnostic Engine with 14-Stack Instant Fixes (`gsc soft-404`)
 
 #### The Problem
-Soft-404 errors silently destroy your Google crawl budget. These are pages that return a `200 OK` status code while showing "Product Not Found" or empty category pages. Finding them is painful; generating server redirect rules by hand is tedious and error-prone.
+Soft-404 errors silently destroy your Google crawl budget by returning `200 OK` on empty templates or missing content. Writing server redirect rules manually across different stacks is slow and error-prone.
 
 #### The Solution
-`gsc soft-404` detects empty templates, blank pages, and canonical loops, auto-detects your underlying tech stack (SvelteKit, Cloudflare, Astro, Next.js, Caddy, Webflow, Shopify, Nginx), and generates production-ready redirect rules:
+`gsc soft-404` detects empty templates, blank pages, and canonical loops, auto-detects your tech stack, and generates copy-paste redirect blocks for 14 server environments:
 
 ```bash
 # Diagnose any URL for soft-404 status (auto-detects tech stack & server)
@@ -238,77 +364,15 @@ gsc soft-404 https://example.com/broken-page
 gsc soft-404 https://example.com/broken-page --fix sveltekit
 gsc soft-404 https://example.com/broken-page --fix caddy
 gsc soft-404 https://example.com/broken-page --fix cloudflare
-gsc soft-404 https://example.com/broken-page --fix workers
-gsc soft-404 https://example.com/broken-page --fix astro
-gsc soft-404 https://example.com/broken-page --fix gatsby
-gsc soft-404 https://example.com/broken-page --fix github
-gsc soft-404 https://example.com/broken-page --fix webflow
-gsc soft-404 https://example.com/broken-page --fix shopify
 gsc soft-404 https://example.com/broken-page --fix nextjs
 gsc soft-404 https://example.com/broken-page --fix nginx
+gsc soft-404 https://example.com/broken-page --fix shopify
 gsc soft-404 https://example.com/broken-page --fix all
 ```
 
 ---
 
-### 4. Cross-Device Mobile vs. Desktop SERP Parity (`gsc mobile-parity`)
-
-#### The Problem
-Google indexes mobile-first. If your mobile layout has hidden content, slower load times, or truncated titles, your mobile ranking can drop 10 positions below desktop without you ever noticing in standard dashboards.
-
-#### The Solution
-`gsc mobile-parity` compares mobile and desktop impressions, average positions, and CTR side-by-side, flagging responsive suppression penalties:
-
-```bash
-gsc mobile-parity example.com --gap-threshold 2.0
-```
-
----
-
-### 5. Detailed Off-Page + On-Page SEO Merger (`gsc page` & `gsc site-audit`)
-
-```bash
-# Audit any URL combining DOM inspection with GSC 90-day search performance
-gsc page https://example.com/
-
-# Deep internal link verification: tests HTTP status codes (200, 404, 500)
-gsc page https://example.com/ --check-links
-
-# Crawl entire XML sitemaps to generate prioritized AI fix sprints
-gsc site-audit https://example.com/sitemap.xml --report docs/seo/site_audit_issues.md
-```
-
----
-
-### 6. Zero-Cost Clipboard Keyword Ingestion (`gsc import clip`)
-
-> **No API key or paid credits required!** Works 100% free with the Keywords Everywhere web dashboard or Google Ads Keyword Planner.
-
-1. **Copy Your Keywords in the Browser**: Click "Copy to Clipboard" on any keyword volume table.
-2. **Run One Command in Your Terminal**:
-   ```bash
-   gsc import clip
-   ```
-3. **Instant Analysis & GSC Correlation**:
-   * Parses volume, CPC, competition score, and 12-month history at zero cost.
-   * Draws live **Unicode Sparklines (` ▂▃▄▅▆▇█`)** showing demand trajectories.
-   * Calculates **Opportunity Scores (0–100)** to prioritize low-competition wins.
-   * Automatically cross-references live Google Search Console rankings (`🏆 Top 3`, `🥇 Page 1`, `🎯 Striking Distance`, or `🚀 Untargeted`).
-   * Archives into `~/.config/gsc/domains/<domain>/keywords/` for historical rank tracking.
-
----
-
-### 7. Google Trends Real-Time Demand Engine (`gsc trends`)
-
-Queries Google Trends explore and widget APIs directly in real time with **zero authentication and zero API keys**:
-```bash
-gsc trends "seo audit" --geo US --time 12m
-gsc trends "local llm" --geo US --time 5y --json
-```
-
----
-
-### 8. Agency Credential Vault (`gsc vault`)
+### 9. Agency Credential Vault & Instant Domain Switching (`gsc vault` & `gsc switch`)
 
 #### The Problem
 Agencies and multi-brand operators juggle dozens of client Google service account JSON files. Leaving unencrypted keys scattered across client folders invites credential leakage, path-traversal vulnerabilities, and accidental cross-client query pollution.
@@ -330,28 +394,6 @@ gsc vault list
 gsc switch client.com
 gsc switch client1
 gsc use 2
-```
-
----
-
-### 9. Striking Distance Playbook & Organic CTR Curve (`gsc strike` & `gsc ctr-curve`)
-
-#### The Problem
-Most SEO reports simply dump a list of keywords without telling you **what to write, where to link, or what the revenue payoff will be**. Page 2 keywords (Positions 4–20) generate 80% of your search impressions but only 5% of your clicks.
-
-#### The Solution
-- **`gsc ctr-curve`**: Generates an empirical, non-linear CTR regression curve mapping your domain's real CTR by position against Google's global benchmarks, simulating the exact click gain of advancing to Top 3.
-- **`gsc strike`**: Automatically synthesizes a tactical Page 2 attack plan with **3 SERP-safe hook titles (< 560px)**, heading recipes, and targeted internal link anchor suggestions:
-
-```bash
-# Simulate organic CTR curve and click upside for Page 2 rankings
-gsc ctr-curve --days 30 --target-pos 3
-
-# Generate tactical Page 2 striking distance playbook
-gsc strike --limit 10
-
-# Export playbook directly to CSV for copywriters & content teams
-gsc strike --limit 20 --csv docs/seo/striking_playbook.csv
 ```
 
 ---
@@ -572,20 +614,21 @@ Once installed, your agent automatically understands all 80 commands, flag permu
 
 ## 🥊 How GSC CLI Compares (The Zero-Bloat Advantage)
 
-| Capability | every-app/open-seo | crawlseo | nalyk/gsccli | benedict2310/gsc-cli | **ApollosWave/gsc-cli (v2.2.0)** |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Price** | $10/mo + DataForSEO | Free (Requires VPS) | Free (Go) | Free (Go) | **100% Free & Open Source ($0)** |
-| **Dependencies** | 100+ npm packages + DB | Docker + Postgres + Node | Go runtime | Go runtime | **0 Gems / Pure Standard Library** |
-| **Execution Latency** | 3–5 seconds (Web app) | Web UI | ~15ms | ~12ms | **< 1 millisecond (Compiled Binary)** |
-| **Command Surface** | 5 web views | Web dashboard | ~8 commands | ~2 commands | **80 Production Commands** |
-| **Actionable Fixes** | ❌ None | ❌ None | ❌ None | ❌ None | **✅ `--fix nginx`, JSON-LD, rewrites** |
-| **Google AI Overviews (AIO)**| ❌ None | ❌ None | ❌ None | ❌ None | **✅ `aio-hunter` + `cite-sim`** |
-| **Soft-404 Diagnostics** | ❌ None | ❌ None | ❌ None | ❌ None | **✅ Forensic heuristic engine** |
-| **Mobile SERP Parity** | ❌ None | ❌ None | ❌ None | ❌ None | **✅ Cross-device rank gap auditor** |
-| **Indexing API** | ❌ None | ❌ None | ✅ Yes | ❌ None | **✅ Google Indexing + Multi-IndexNow** |
-| **Multi-Client Vault** | ❌ Plain files | ❌ Plain files | ❌ Single site | ❌ Single site | **✅ AES-256-GCM Encrypted Vault (`gsc vault`)** |
-| **Token Economics** | ❌ None (Web) | ❌ None (Web) | ❌ Verbose | ❌ Text only | **✅ Native `--compact`, `--ndjson`, `--csv` (35–75% savings)** |
-| **AI Agent Native Skill** | MCP server only | MCP server only | MCP server only | ❌ Refused | **✅ Antigravity, Claude, Cursor Skill + JSON** |
+| Capability | Google Search Console Web UI | Official Google API SDK (40 Gems) | Enterprise SEO Suites ($300–$1,000+/mo) | **ApollosWave/gsc-cli (v2.2.0)** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pricing** | Free ($0) | Free ($0) | $300–$1,000+/mo ($3,600–$12,000/yr) | **100% Free & Open Source ($0)** |
+| **Dependencies** | Web Browser only | 40+ transitive gems (`googleauth`, etc.) | SaaS Web Application | **0 Gems / Pure Standard Library** |
+| **Boot / Execution Latency** | Slow (manual clicking) | 3–5 seconds cold boot | Web UI latency | **< 1 millisecond (Compiled Binary)** |
+| **Data Accuracy** | 100% Google Ground Truth | 100% Google Ground Truth | Sampled external proxy estimates | **100% Google Ground Truth (Direct API)** |
+| **CLI Command Surface** | ❌ None (Web only) | Raw Ruby code required | ❌ None (Web dashboard) | **80 Production Commands** |
+| **Core GSC Workflows** | Manual tab clicking & export | Complex API code boilerplate | Partial GSC sync via OAuth | **`top-queries`, `top-pages`, `performance`** |
+| **Instant Googlebot Indexing** | Manual 1-by-1 submit | Complex JWT boilerplate | ❌ None | **✅ 1-Click Priority Ping (`gsc index`)** |
+| **Multi-Engine IndexNow** | ❌ None | ❌ None | ❌ None | **✅ Bing, Yandex, Seznam, Naver (`gsc indexnow`)** |
+| **Striking Distance Playbook** | ❌ Manual spreadsheet work | ❌ None | Expensive add-on tiers | **✅ Automated Page 2 Playbook (`gsc strike`)** |
+| **Google AI Overviews (AIO)** | ❌ None | ❌ None | Limited / expensive beta tiers | **✅ Built-in `aio-hunter` & `cite-sim`** |
+| **Automated Fix Generation** | ❌ None (Error tables only) | ❌ None | ❌ None | **✅ 14-Stack Redirects (`gsc soft-404 --fix`)** |
+| **Token Economics for AI** | ❌ None | Verbose unformatted JSON | ❌ None | **✅ Native `--compact`, `--ndjson`, `--csv` (35–75% savings)** |
+| **Autonomous AI Agent Skills** | ❌ None | ❌ None | ❌ None | **✅ Native Skill for Claude, Cursor, Antigravity** |
 
 ---
 
