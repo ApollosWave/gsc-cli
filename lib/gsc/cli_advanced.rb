@@ -170,12 +170,60 @@ module GSC
       puts "╚══════════════════════════════════════════════════════════════╝"
 
       m = data[:metrics] || {}
-      puts "\n#{Color::BOLD}📊 CORE WEB VITALS (Lab Metrics):#{Color::RESET}"
+      puts "\n#{Color::BOLD}🔬 LIGHTHOUSE LAB METRICS (Simulated #{strategy.upcase}):#{Color::RESET}"
       puts "   • LCP (Largest Contentful Paint) : #{Color.c(m[:lcp] || 'N/A', Color::BOLD)}"
       puts "   • FCP (First Contentful Paint)   : #{Color.c(m[:fcp] || 'N/A', Color::BOLD)}"
       puts "   • CLS (Cumulative Layout Shift)  : #{Color.c(m[:cls] || 'N/A', Color::BOLD)}"
       puts "   • TBT (Total Blocking Time)      : #{Color.c(m[:tbt] || 'N/A', Color::BOLD)}"
       puts "   • Speed Index                    : #{Color.c(m[:speed_index] || 'N/A', Color::BOLD)}"
+
+      fd = data[:field_data] || {}
+      if fd.any?
+        source_label = data[:field_source] == :origin ? "Domain-Wide Origin RUM" : "URL-Level RUM"
+        overall = data[:overall_category] || "UNKNOWN"
+        overall_col = overall == 'FAST' ? Color::GREEN : (overall == 'AVERAGE' ? Color::YELLOW : Color::RED)
+        puts "\n#{Color::BOLD}🌐 CrUX FIELD DATA (28-Day Real User Monitoring - #{source_label}):#{Color::RESET}"
+        puts "   • Core Web Vitals Status        : #{Color.c(overall, overall_col, Color::BOLD)}"
+
+        if fd['LARGEST_CONTENTFUL_PAINT_MS']
+          val = "#{(fd['LARGEST_CONTENTFUL_PAINT_MS'][:percentile].to_f / 1000).round(2)} s"
+          cat = fd['LARGEST_CONTENTFUL_PAINT_MS'][:category]
+          col = cat == 'FAST' ? Color::GREEN : (cat == 'AVERAGE' ? Color::YELLOW : Color::RED)
+          puts "   • LCP (75th Percentile)         : #{Color.c(val, Color::BOLD)} [#{Color.c(cat, col)}]"
+        end
+
+        if fd['INTERACTION_TO_NEXT_PAINT']
+          val = "#{fd['INTERACTION_TO_NEXT_PAINT'][:percentile]} ms"
+          cat = fd['INTERACTION_TO_NEXT_PAINT'][:category]
+          col = cat == 'FAST' ? Color::GREEN : (cat == 'AVERAGE' ? Color::YELLOW : Color::RED)
+          puts "   • INP (75th Percentile)         : #{Color.c(val, Color::BOLD)} [#{Color.c(cat, col)}]"
+        end
+
+        if fd['CUMULATIVE_LAYOUT_SHIFT_SCORE']
+          val = (fd['CUMULATIVE_LAYOUT_SHIFT_SCORE'][:percentile].to_f / 100).round(3).to_s
+          cat = fd['CUMULATIVE_LAYOUT_SHIFT_SCORE'][:category]
+          col = cat == 'FAST' ? Color::GREEN : (cat == 'AVERAGE' ? Color::YELLOW : Color::RED)
+          puts "   • CLS (75th Percentile)         : #{Color.c(val, Color::BOLD)} [#{Color.c(cat, col)}]"
+        end
+
+        if fd['FIRST_CONTENTFUL_PAINT_MS']
+          val = "#{(fd['FIRST_CONTENTFUL_PAINT_MS'][:percentile].to_f / 1000).round(2)} s"
+          cat = fd['FIRST_CONTENTFUL_PAINT_MS'][:category]
+          col = cat == 'FAST' ? Color::GREEN : (cat == 'AVERAGE' ? Color::YELLOW : Color::RED)
+          puts "   • FCP (75th Percentile)         : #{Color.c(val, Color::BOLD)} [#{Color.c(cat, col)}]"
+        end
+
+        if fd['EXPERIMENTAL_TIME_TO_FIRST_BYTE']
+          val = "#{fd['EXPERIMENTAL_TIME_TO_FIRST_BYTE'][:percentile]} ms"
+          cat = fd['EXPERIMENTAL_TIME_TO_FIRST_BYTE'][:category]
+          col = cat == 'FAST' ? Color::GREEN : (cat == 'AVERAGE' ? Color::YELLOW : Color::RED)
+          puts "   • TTFB (75th Percentile)        : #{Color.c(val, Color::BOLD)} [#{Color.c(cat, col)}]"
+        end
+      else
+        puts "\n#{Color::BOLD}🌐 CrUX FIELD DATA (28-Day Real User Monitoring):#{Color::RESET}"
+        puts "   #{Color.c('ℹ️ Insufficient real-user Chrome visits over the rolling 28-day window for Google CrUX telemetry.', Color::GRAY)}"
+        puts "   #{Color.c('   (Google requires a minimum traffic threshold before publishing real-user CrUX field data).', Color::GRAY)}"
+      end
 
       opps = data[:opportunities] || []
       unless opps.empty?

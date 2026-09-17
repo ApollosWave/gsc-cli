@@ -100,6 +100,7 @@ By implementing Google's JWT service account authentication in pure `OpenSSL` an
 - 🛡️ **Cannibalization & Decay Detection (`gsc cannibalization`, `gsc decay`)**: Spot internal URLs fighting for the same queries, and compare 28-day period-over-period traffic trends.
 - 📊 **Google Analytics 4 (GA4) Behavioral Link (`gsc realtime`, `gsc ga4`)**: Stream live active visitors and correlate SERP rankings with landing page bounce rates.
 - 🕷️ **Autonomous Site Audit & Broken Link Repair (`gsc site-audit`)**: Crawls all sitemap URLs, checks HTTP response codes for dead internal links (404/500/timeouts), audits missing image alts and heading defects, and exports an AI-actionable Markdown fix sprint.
+- ⚡ **Dual Lab & Field Core Web Vitals (`gsc speed` & `gsc speed-correlate`)**: Audits simulated Lighthouse Lab metrics (LCP, FCP, CLS, TBT, Speed Index) alongside official 28-day Chrome User Experience Report (CrUX) Real User Monitoring (RUM) field data (LCP, INP, CLS, FCP, TTFB) and correlates page speed directly with organic GSC search rankings.
 - 🤖 **AI Agent Native**: Every single command supports `--compact`, `--ndjson`, and `--json` for instantaneous programmatic consumption by AI agents.
 
 ---
@@ -465,7 +466,7 @@ gsc use 2
 | `gsc report` | — | Executive 360° Health Scorecard with letter grade and sparklines | `--days`, `--sparkline`, `--json` |
 | `gsc page <url>` | — | Detailed On-Page DOM audit (meta, headings, alts, schema) + GSC performance | `--check-links`, `--json` |
 | `gsc site-audit <sitemap>`| — | Crawls sitemaps, tests 404 dead links, audits DOM flaws, and outputs fix sprint | `--report <file>`, `--json` |
-| `gsc speed <url>` | `vitals` | Official Core Web Vitals via PageSpeed Insights (LCP, INP, CLS, TTFB) | `--strategy mobile|desktop`, `--json` |
+| `gsc speed <url>` | `vitals` | Dual Lab (Lighthouse) & Field (CrUX 28-day RUM) Core Web Vitals (LCP, INP, CLS, TTFB) | `--strategy mobile|desktop`, `--json` |
 | `gsc speed-correlate` | `sc-perf` | Correlates Core Web Vitals page speed with GSC organic rankings | `--days`, `--strategy`, `--json` |
 | `gsc canonical-chains` | `chains` | Canonical redirect loops and multi-hop chain detector | `--limit`, `--json` |
 | `gsc low-ctr` | — | High-impression low-CTR title & meta description rewriter | `--limit`, `--min-imp`, `--json` |

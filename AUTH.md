@@ -96,6 +96,11 @@ export GA4_PROPERTY_ID=123456789
 
 Audit official mobile and desktop Lighthouse scores and 75th percentile Chrome User Experience Report (CrUX) metrics (LCP, INP, CLS, FCP, TTFB).
 
+### Understanding Lab vs. Field (CrUX) Data:
+* **🔬 Lighthouse Lab Data (Synthetic Simulation):** Evaluated instantaneously in a headless Chrome environment under fixed 4G mobile or desktop throttling. Ideal for immediate debugging and identifying optimization opportunities (LCP, FCP, CLS, TBT, Speed Index).
+* **🌐 CrUX Field Data (28-Day Real User Monitoring):** Aggregated 75th percentile measurements collected from real Google Chrome users over a rolling 28-day window. This is the **actual telemetry Google Search uses for Core Web Vitals ranking signals** (LCP, INP, CLS, FCP, TTFB).
+* **Traffic Thresholds:** For new or low-traffic pages, Google does not have enough real-user Chrome sessions to publish CrUX data. In those cases, `gsc speed` automatically displays the instantaneous Lighthouse Lab audit and flags that CrUX field data is pending sufficient 28-day visitor volume.
+
 > 💡 **Why an API Key is Recommended:**  
 > While Google technically permits unauthenticated queries, Google's public unauthenticated IP pool frequently hits `429 Quota Exceeded (RESOURCE_EXHAUSTED)`. Generating a personal API key in Google Cloud gives you **25,000 queries per day at $0 cost**.
 

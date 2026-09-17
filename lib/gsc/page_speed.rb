@@ -28,9 +28,9 @@ module GSC
 
       uri = URI("#{API_URL}?#{query_params.join('&')}")
       req = Net::HTTP::Get.new(uri)
-      req['User-Agent'] = 'gsc-cli/2.1'
+      req['User-Agent'] = "gsc-cli/#{GSC::VERSION}"
 
-      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 30) do |http|
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 15, read_timeout: 60) do |http|
         http.request(req)
       end
 
@@ -64,15 +64,27 @@ module GSC
       tbt = audits.dig('total-blocking-time', 'displayValue')
       si  = audits.dig('speed-index', 'displayValue')
 
-      # CrUX Field Data (if available)
+      # CrUX Field Data (URL or Origin fallback if available)
       crux_metrics = {}
+      crux_source = nil
       crux = data.dig('loadingExperience', 'metrics') || {}
-      crux.each do |k, v|
-        crux_metrics[k] = {
-          percentile: v['percentile'],
-          category: v['category']
-        }
+      if crux && !crux.empty?
+        crux_source = :url
+      else
+        crux = data.dig('originLoadingExperience', 'metrics') || {}
+        crux_source = :origin unless crux.empty?
       end
+
+      if crux && !crux.empty?
+        crux.each do |k, v|
+          crux_metrics[k] = {
+            percentile: v['percentile'],
+            category: v['category']
+          }
+        end
+      end
+
+      overall_category = data.dig('loadingExperience', 'overall_category') || data.dig('originLoadingExperience', 'overall_category')
 
       # Opportunities
       opportunities = []
@@ -103,6 +115,8 @@ module GSC
           speed_index: si
         },
         field_data: crux_metrics,
+        field_source: crux_source,
+        overall_category: overall_category,
         opportunities: opportunities.first(5)
       }
     end
