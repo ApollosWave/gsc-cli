@@ -43,6 +43,56 @@ def query_analytics(site_url, days: 30, dimensions: ['query'], row_limit: 50, st
   res.merge(start_date: start_d, end_date: end_d)
 end
 
+# Unified search_analytics interface supporting string/symbol rows access and property prefix fallback
+def search_analytics(site_url, start_date: nil, end_date: nil, days: 30, dimensions: ['query'], row_limit: 5000, start_row: 0, filters: nil)
+  raw_site = site_url.to_s.strip
+  target_site = if raw_site.start_with?('sc-domain:', 'http://', 'https://')
+                  raw_site
+                else
+                  "sc-domain:#{raw_site}"
+                end
+
+  res = query_analytics(
+    target_site,
+    days: days,
+    dimensions: dimensions,
+    row_limit: row_limit,
+    start_row: start_row,
+    start_date: start_date,
+    end_date: end_date,
+    filters: filters
+  )
+
+  # Fallback to URL-prefix if sc-domain returns empty or forbidden
+  if (!res[:ok] || (res.dig(:data, 'rows') || []).empty?) && target_site.start_with?('sc-domain:')
+    clean_dom = target_site.sub(/^sc-domain:/, '')
+    fallback_res = query_analytics(
+      "https://#{clean_dom}/",
+      days: days,
+      dimensions: dimensions,
+      row_limit: row_limit,
+      start_row: start_row,
+      start_date: start_date,
+      end_date: end_date,
+      filters: filters
+    )
+    res = fallback_res if fallback_res[:ok] && (fallback_res.dig(:data, 'rows') || []).any?
+  end
+
+  rows = res.dig(:data, 'rows') || []
+  {
+    'rows' => rows,
+    :rows  => rows,
+    :data  => res[:data] || { 'rows' => rows },
+    'data' => res[:data] || { 'rows' => rows },
+    :ok    => res[:ok],
+    :status => res[:status],
+    :start_date => res[:start_date],
+    :end_date => res[:end_date]
+  }
+end
+alias_method :query_search_analytics, :search_analytics
+
 # Fetch all analytics rows across pagination (handles >25,000 queries via startRow)
 def query_all_analytics(site_url, days: 30, dimensions: ['query'], start_date: nil, end_date: nil, max_total: nil)
   all_rows = []
@@ -70,6 +120,8 @@ def query_all_analytics(site_url, days: 30, dimensions: ['query'], start_date: n
     break if max_total && all_rows.size >= max_total
 
     start_row += chunk_size
+    # Google Search Console Search Analytics API hard limit: startRow cannot exceed 25,000
+    break if start_row >= 25000
   end
 
   {
@@ -210,7 +262,7 @@ end
       res = @client.post(endpoint, body)
       map = {}
       if res[:ok]
-        (res[:data]['rows'] || []).each do |r|
+        (res.dig(:data, 'rows') || []).each do |r|
           title = r.dig('dimensionValues', 0, 'value')
           path  = r.dig('dimensionValues', 1, 'value')
           map[title] ||= path if title && path

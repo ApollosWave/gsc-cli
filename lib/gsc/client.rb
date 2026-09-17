@@ -55,12 +55,27 @@ module GSC
       # Transparent gzip decompression
       raw_body = response.body
       body_str = if response['content-encoding'] =~ /gzip/i && raw_body && !raw_body.empty?
-                   Zlib::GzipReader.new(StringIO.new(raw_body)).read
+                   begin
+                     Zlib::GzipReader.new(StringIO.new(raw_body)).read
+                   rescue Zlib::GzipFile::Error, Zlib::Error
+                     raw_body
+                   end
                  else
                    raw_body
                  end
 
-      body = body_str ? (JSON.parse(body_str) rescue body_str) : nil
+      body_str = body_str.to_s.dup.force_encoding('UTF-8').scrub if body_str
+
+      body = if body_str && !body_str.strip.empty?
+               begin
+                 parsed = JSON.parse(body_str)
+                 parsed.is_a?(Hash) || parsed.is_a?(Array) ? parsed : { 'value' => parsed }
+               rescue JSON::ParserError, Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
+                 { 'error' => { 'message' => body_str }, 'raw' => body_str }
+               end
+             else
+               {}
+             end
 
       {
         ok: response.is_a?(Net::HTTPSuccess),

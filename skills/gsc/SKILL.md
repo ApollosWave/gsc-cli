@@ -33,18 +33,25 @@ gsc top-queries --all --json
 gsc top-pages --all --json
 ```
 
-## Agent Rule: Always Use `--json` Flag
+## Agent Rule: Optimize Token Consumption (`--compact`, `--ndjson`, `--csv`)
 
-When running `gsc` commands from agent tools (`run_command`), **always append `--json`** to receive clean, machine-readable JSON output instead of ANSI terminal formatting:
+When running `gsc` commands from agent tools (`run_command`), **always append machine-readable flags** to receive clean, deterministic output instead of ANSI terminal formatting:
+
+- **`--compact` (Recommended for AI Agents)**: Single-line minified JSON. Saves **35–45% LLM tokens**, allowing you to ingest 2x more search performance data within identical context windows.
+- **`--ndjson`**: Newline-delimited JSON streaming. Ideal for line-by-line streaming, grep, or subagent tasks.
+- **`--csv`**: Ultra-compact tabular data. Saves **65–75% LLM tokens** on high-volume keyword and landing page queries.
+- **`--json`**: Standard 2-space indented JSON.
 
 ```bash
-gsc top-queries --json
-gsc opportunities --json
-gsc inspect https://example.com/page --json
-gsc performance --days 30 --json
-gsc realtime --json
-gsc ads --json
-gsc channels --json
+# Recommended for lowest LLM token usage:
+gsc top-queries --limit 20 --compact
+gsc opportunities --min-imp 20 --compact
+gsc strike --limit 15 --compact
+gsc inspect https://example.com/page --compact
+gsc performance --days 30 --compact
+gsc realtime --compact
+gsc ads --compact
+gsc channels --compact
 ```
 
 ---
@@ -158,10 +165,10 @@ gsc channels --json
 Analyze any live URL or local HTML/template file (`.html`, `.svelte`, `.erb`) with the DOM inspection engine inspired by Detailed SEO Extension, merged with real Google Search Console 90-day search queries:
 ```bash
 # 360° On-Page DOM + Real Search Console Rankings & CTR
-gsc page https://packinglog.com/ --json
+gsc page https://example.com/ --compact
 
 # Deep verification: test HTTP response codes (200, 404, 500) for all internal links
-gsc page https://packinglog.com/ --check-links
+gsc page https://example.com/ --check-links
 
 # Local file auditing before deployment
 gsc page src/routes/+page.svelte
@@ -183,13 +190,13 @@ gsc page src/routes/+page.svelte
 Crawl all pages in a sitemap (or discover from domain), audit DOM defects, check for dead links (404/500), and generate an AI-actionable Markdown fix sprint:
 ```bash
 # Crawl entire sitemap and emit actionable repair sprint
-gsc site-audit https://packinglog.com/sitemap.xml --report docs/seo/site_audit_issues.md
+gsc site-audit https://example.com/sitemap.xml --report docs/seo/site_audit_issues.md
 
 # Verify all links across first 20 pages with dead link testing
-gsc site-audit packinglog.com --limit 20 --check-links --report docs/seo/site_audit_issues.md
+gsc site-audit example.com --limit 20 --check-links --report docs/seo/site_audit_issues.md
 
 # Machine-readable JSON output for automated agent remediation
-gsc site-audit https://packinglog.com/sitemap.xml --limit 10 --json
+gsc site-audit https://example.com/sitemap.xml --limit 10 --compact
 ```
 **Actionable Fix Report Includes**:
 1. **Executive Health Scorecard**: Total pages, critical crawl errors, broken links, missing alts, and heading flaws.
@@ -244,7 +251,7 @@ Rewrite `<title>` and `<meta name="description">` according to these strict rule
 2. **Optimal Length**: Keep `<title>` between **50 and 60 characters** (maximum 580px width) so Google does not truncate with `...`.
 3. **Emotional Hook / CTR Multiplier**: Include brackets `[Free Calculator]`, actionable numbers (`10 Best`, `2026 Checklist`), or primary value props.
 4. **Brand Suffix**: Always append ` | BrandName` at the end.
-5. **Meta Description**: 130–155 characters summarizing the page benefit with a clear call-to-action (e.g. *"Calculate exact moving box counts by room, size, and weight. Free instant estimator."*).
+5. **Meta Description**: 130–155 characters summarizing the page benefit with a clear call-to-action (e.g. *"Inspect technical SEO health, Core Web Vitals, and index coverage instantly. Free diagnostic audit."*).
 6. **Heading Polish**: Ensure `<h1>` matches search intent and **never ends with a period (`.`)**.
 
 #### Step 4: Immediately Trigger Googlebot Indexing

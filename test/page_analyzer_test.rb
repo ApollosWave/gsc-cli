@@ -8,15 +8,15 @@ class PageAnalyzerTest < Minitest::Test
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <title>Best Moving Boxes &amp; Packing Supplies | PackingLog</title>
-      <meta name="description" content="Discover smart moving boxes with QR code inventory tracking. Print stickers and catalog boxes fast.">
-      <link rel="canonical" href="https://packinglog.com/boxes">
+      <title>Best SEO Analytics &amp; Audit Platforms | ExampleApp</title>
+      <meta name="description" content="Discover smart SEO tools with Google Search Console tracking. Inspect URLs and audit rankings fast.">
+      <link rel="canonical" href="https://example.com/tools">
       <meta name="robots" content="index, follow">
       <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Product",
-        "name": "Smart Moving Box Labels",
+        "name": "Smart SEO Analytics Engine",
         "offers": {
           "@type": "Offer",
           "price": "0.00"
@@ -25,13 +25,13 @@ class PageAnalyzerTest < Minitest::Test
       </script>
     </head>
     <body>
-      <h1>Smart Moving Boxes</h1>
-      <h2>Why QR Labels Work</h2>
-      <p>Moving made simple.</p>
-      <h2>Box Sizes</h2>
-      <h3>Small Box</h3>
-      <img src="/images/box1.jpg" alt="Small moving box">
-      <img src="/images/box2.jpg">
+      <h1>Smart SEO Platform</h1>
+      <h2>Why SEO Audits Work</h2>
+      <p>Search made simple.</p>
+      <h2>Tool Modules</h2>
+      <h3>Audit Suite</h3>
+      <img src="/images/tool1.jpg" alt="Small tool preview">
+      <img src="/images/tool2.jpg">
       <a href="/pricing">Pricing</a>
       <a href="https://google.com" rel="nofollow">External Link</a>
     </body>
@@ -39,21 +39,21 @@ class PageAnalyzerTest < Minitest::Test
   HTML
 
   def test_page_analyzer_parses_dom
-    analyzer = GSC::PageAnalyzer.new("https://packinglog.com/boxes", html: SAMPLE_HTML)
+    analyzer = GSC::PageAnalyzer.new("https://example.com/tools", html: SAMPLE_HTML)
     data = analyzer.fetch_and_analyze
 
     # Title & Meta
-    assert_equal "Best Moving Boxes & Packing Supplies | PackingLog", data[:title][:text]
+    assert_equal "Best SEO Analytics & Audit Platforms | ExampleApp", data[:title][:text]
     assert_equal 49, data[:title][:length]
     assert data[:title][:pixel_est] > 300
     assert data[:title][:ok]
 
-    assert_includes data[:meta_description][:text], "Discover smart moving boxes"
+    assert_includes data[:meta_description][:text], "Discover smart SEO tools"
     assert_equal 99, data[:meta_description][:length]
     assert data[:meta_description][:ok]
 
     # Canonical
-    assert_equal "https://packinglog.com/boxes", data[:canonical][:url]
+    assert_equal "https://example.com/tools", data[:canonical][:url]
     assert data[:canonical][:self_referencing]
 
     # Indexability
@@ -62,12 +62,12 @@ class PageAnalyzerTest < Minitest::Test
     # Headings
     assert_equal 4, data[:headings][:count]
     assert_equal 1, data[:headings][:h1_count]
-    assert_equal "Smart Moving Boxes", data[:headings][:list].first[:text]
+    assert_equal "Smart SEO Platform", data[:headings][:list].first[:text]
 
     # Images
     assert_equal 2, data[:images][:total]
     assert_equal 1, data[:images][:missing_alt_count]
-    assert_equal "/images/box2.jpg", data[:images][:missing_alt_images].first[:src]
+    assert_equal "/images/tool2.jpg", data[:images][:missing_alt_images].first[:src]
 
     # Links
     assert_equal 2, data[:links][:total]

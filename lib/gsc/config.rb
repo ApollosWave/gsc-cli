@@ -153,7 +153,7 @@ def self.load_saved_keywords(domain, identifier)
 
   target_file = if identifier.to_s =~ /^\d+$/
                   idx = identifier.to_i - 1
-                  list[idx]&.fetch('path', nil)
+                  idx >= 0 ? list[idx]&.fetch('path', nil) : nil
                 else
                   found = list.find { |item| item['file'] == identifier || item['seed'] == identifier || item['file'].include?(identifier.to_s) }
                   found ? found['path'] : nil
@@ -171,7 +171,7 @@ def self.delete_saved_keywords(domain, identifier)
 
   target_file = if identifier.to_s =~ /^\d+$/
                   idx = identifier.to_i - 1
-                  list[idx]&.fetch('path', nil)
+                  idx >= 0 ? list[idx]&.fetch('path', nil) : nil
                 else
                   found = list.find { |item| item['file'] == identifier || item['file'].include?(identifier.to_s) }
                   found ? found['path'] : nil

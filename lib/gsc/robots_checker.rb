@@ -12,14 +12,33 @@ module GSC
       @target_url = target_url.to_s.strip
       @target_url = "https://#{@target_url}" unless @target_url =~ %r{^https?://}
       @uri = URI.parse(@target_url)
-      @robots_url = "#{@uri.scheme}://#{@uri.host}:#{@uri.port}/robots.txt"
+      @robots_url = if (@uri.port == 80 && @uri.scheme == 'http') || (@uri.port == 443 && @uri.scheme == 'https')
+                      "#{@uri.scheme}://#{@uri.host}/robots.txt"
+                    else
+                      "#{@uri.scheme}://#{@uri.host}:#{@uri.port}/robots.txt"
+                    end
     end
 
-    def fetch_robots_txt
-      res = Net::HTTP.get_response(URI.parse(@robots_url))
-      return '' unless res.code == '200'
+    def fetch_robots_txt(url = @robots_url, limit = 3)
+      return '' if limit <= 0
+      uri = URI.parse(url) rescue nil
+      return '' unless uri && uri.host
 
-      res.body.force_encoding('UTF-8')
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = (uri.scheme == 'https')
+      http.open_timeout = 4
+      http.read_timeout = 6
+      req = Net::HTTP::Get.new(uri.request_uri.empty? ? '/robots.txt' : uri.request_uri)
+      req['User-Agent'] = 'Mozilla/5.0 (compatible; GSC-SEO-Auditor/2.2)'
+
+      res = http.request(req)
+      if res.is_a?(Net::HTTPRedirection) && res['location']
+        new_url = URI.join(url, res['location']).to_s rescue nil
+        return new_url ? fetch_robots_txt(new_url, limit - 1) : ''
+      end
+
+      return '' unless res.code == '200'
+      res.body.to_s.force_encoding('UTF-8').scrub
     rescue StandardError
       ''
     end
@@ -57,27 +76,39 @@ module GSC
     private
 
     def parse_rules(target_ua)
-      rules = []
-      current_ua = nil
-      applies = false
+      groups = Hash.new { |h, k| h[k] = [] }
+      current_uas = []
+      in_directives = false
 
       @robots_content.each_line do |line|
         line = line.strip.sub(/#.*$/, '')
         next if line.empty?
 
         if line =~ /^User-agent:\s*(.+)$/i
-          current_ua = $1.strip.downcase
-          applies = (current_ua == '*' || current_ua == target_ua)
-        elsif applies && line =~ /^Disallow:\s*(.*)$/i
+          if in_directives
+            current_uas = []
+            in_directives = false
+          end
+          current_uas << $1.strip.downcase
+        elsif line =~ /^Disallow:\s*(.*)$/i
+          in_directives = true
           val = $1.strip
-          rules << { type: :disallow, path: val } unless val.empty?
-        elsif applies && line =~ /^Allow:\s*(.*)$/i
+          current_uas.each { |ua| groups[ua] << { type: :disallow, path: val } unless val.empty? }
+        elsif line =~ /^Allow:\s*(.*)$/i
+          in_directives = true
           val = $1.strip
-          rules << { type: :allow, path: val } unless val.empty?
+          current_uas.each { |ua| groups[ua] << { type: :allow, path: val } unless val.empty? }
         end
       end
 
-      rules
+      # RFC 9309: Specific user-agent match takes absolute precedence over wildcard '*'
+      if groups.key?(target_ua) && groups[target_ua].any?
+        groups[target_ua]
+      elsif groups.key?('*')
+        groups['*']
+      else
+        []
+      end
     end
   end
 end

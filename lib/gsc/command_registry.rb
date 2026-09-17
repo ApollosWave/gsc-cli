@@ -6,9 +6,9 @@ COMMAND_REGISTRY = [
   {
     category: "Google Trends & Keyword Demand",
     commands: [
-{ name: "ke <seed|file>", shortcut: "ke", desc: "Keywords Everywhere: Exact monthly volume, CPC, competition & GSC correlation", flags: ["--country", "--limit", "--json"] },
-{ name: "ke-credits", shortcut: "ke-credits", desc: "Check remaining Keywords Everywhere account API credits", flags: ["--json"] },
-{ name: "connect ke [key]", shortcut: "connect ke", desc: "Connect Keywords Everywhere API key and save to config.json", flags: [] },
+      { name: "ke <seed|file>", shortcut: "ke", desc: "Keywords Everywhere: Exact monthly volume, CPC, competition & GSC correlation", flags: ["--country", "--limit", "--json"] },
+      { name: "ke-credits", shortcut: "ke-credits", desc: "Check remaining Keywords Everywhere account API credits", flags: ["--json"] },
+      { name: "connect ke [key]", shortcut: "connect ke", desc: "Connect Keywords Everywhere API key and save to config.json", flags: [] },
       { name: "trends <query>", shortcut: "tr", desc: "Live Google Trends: 5yr/1yr demand trajectory, velocity & breakout queries", flags: ["--geo", "--time", "--json"] },
       { name: "planner <seed>", shortcut: "kp", desc: "Free keyword planner: intent expansion & GSC ranking correlation", flags: ["--country", "--limit", "--json"] },
       { name: "planner-import <file>", shortcut: "pi", desc: "Import Google Ads CSV or Markdown table to score & rank opportunities", flags: ["--limit", "--json"] }
@@ -18,12 +18,18 @@ COMMAND_REGISTRY = [
     category: "Search Console Intelligence",
     commands: [
       { name: "performance", shortcut: "p", desc: "Executive dashboard: Clicks, Impressions, CTR, Position", flags: ["--days", "--limit", "--csv"] },
-      { name: "top-queries", shortcut: "t", desc: "Top search queries, rankings, and CTR", flags: ["--days", "--limit", "-s", "--order", "--csv"] },
+      { name: "top-queries", shortcut: "t", desc: "Top search queries, rankings, and CTR", flags: ["--days", "--limit", "-s", "--order", "--brand", "--non-brand", "--brand-name", "--csv"] },
+      { name: "brand", shortcut: "b", desc: "Brand vs. non-brand search query segmentation & share", flags: ["--days", "--limit", "--brand-name", "--json"] },
+      { name: "ctr-curve", shortcut: nil, desc: "Expected SERP CTR curve & click gain simulator", flags: ["--target-pos", "--min-imp", "--limit", "--days", "--csv"] },
       { name: "top-pages", shortcut: nil, desc: "Top landing pages driving organic search clicks", flags: ["--days", "--limit", "-s", "--order", "--csv"] },
       { name: "opportunities", shortcut: "o", desc: "Striking-distance queries (Pos 7-20) to push to Top 3", flags: ["--days", "--min-imp", "--min-pos", "--max-pos"] },
+      { name: "strike", shortcut: "sp", desc: "Striking-distance tactical playbook: Title rewrites, heading recipes & internal link anchors (Pos 7-20)", flags: ["--days", "--min-imp", "--min-pos", "--max-pos", "--limit", "--csv", "--json"] },
       { name: "underperformers", shortcut: "u", desc: "High-ranking queries (Top 10) with low CTR (title tag wins)", flags: ["--days", "--min-imp"] },
+      { name: "low-ctr [query/url]", shortcut: "lc", desc: "Low-CTR High-Impression Title Tag Rewriter: 3 SERP-safe hook titles (<560px), click hemorrhage & revenue recovery", flags: ["--min-imp", "--cpc", "--limit", "--brand", "--csv", "--json"] },
       { name: "cannibalization", shortcut: "c", desc: "Detect internal URLs competing for the same keywords", flags: ["--days", "--min-imp"] },
+      { name: "questions-harvest [page]", shortcut: "qh", desc: "Harvest question queries from GSC and generate FAQPage JSON-LD schema", flags: ["--days", "--min-imp", "--limit", "--generate", "--csv", "--json"] },
       { name: "decay", shortcut: "d", desc: "Period-over-period decay detection (decaying vs surging)", flags: ["--compare"] },
+      { name: "sparklines [query|page]", shortcut: "spark", desc: "Terminal ASCII Sparklines & Multi-Horizon Trajectory Graphs (Clicks, Imp, CTR, Pos)", flags: ["--days", "--metric", "--height", "--data", "--csv", "--json"] },
       { name: "trends", shortcut: nil, desc: "Compare current vs prior period search trends", flags: ["--compare"] },
       { name: "devices", shortcut: nil, desc: "Desktop vs Mobile vs Tablet search traffic share", flags: ["--days"] },
       { name: "countries", shortcut: nil, desc: "Geographic search demand by country", flags: ["--days", "--limit"] },
@@ -52,6 +58,7 @@ COMMAND_REGISTRY = [
     commands: [
       { name: "inspect <url>", shortcut: nil, desc: "Live Google index check (coverage, canonical, date, robots.txt)", flags: ["-d"] },
       { name: "index <url>", shortcut: nil, desc: "Notify Googlebot to crawl/index URL immediately (URL_UPDATED)", flags: ["--dry-run"] },
+      { name: "index-batch [action]", shortcut: "ib", desc: "Automated 200 URL/day quota queue manager (add, run, status, clear)", flags: ["--batch-size", "--dry-run", "--json"] },
       { name: "remove <url>", shortcut: nil, desc: "Notify Googlebot a page has been deleted (URL_DELETED)", flags: ["--dry-run"] },
       { name: "status <url>", shortcut: nil, desc: "Check Google Indexing API notification metadata", flags: [] },
       { name: "sitemaps-list", shortcut: nil, desc: "List registered XML sitemaps in Search Console", flags: ["-d"] },
@@ -66,17 +73,44 @@ COMMAND_REGISTRY = [
   {
     category: "Health, Diagnostics & Setup",
     commands: [
-      { name: "serp [url|title]", shortcut: "preview", desc: "Google SERP & Title Pixel Width Simulator (Desktop & Mobile)", flags: ["--title", "--desc", "--url", "--json"] },
+      { name: "geo [url]", shortcut: "aeo", desc: "Generative Engine Optimization: Audit AI bot access & citability score (ChatGPT, Perplexity, Claude)", flags: ["--json"] },
+      { name: "cite-sim <url|file> [query]", shortcut: "cite", desc: "AI Search Citation Simulator: Emulates ChatGPT, Perplexity & Claude citations, verifiable quote extraction & CLS score", flags: ["--query", "--model", "--csv", "--json"] },
+      { name: "answer <query>", shortcut: "ans", desc: "Synthesize high-citability 40-60w direct answers & info-gain snippets (Featured Snippets & Perplexity)", flags: ["--brand", "--type", "--generate", "--json"] },
+      { name: "entity [url]", shortcut: "kg", desc: "Knowledge Graph entity & sameAs disambiguation audit (Wikidata, Wikipedia, LinkedIn)", flags: ["--generate", "--json"] },
+      { name: "serp <query|url>", shortcut: "preview", desc: "Live SERP Feature Detector (AI Overviews, Snippets, PAA, Local) & Pixel Width Simulator", flags: ["--live", "--preview", "--title", "--desc", "--url", "--json"] },
+      { name: "serp-features <query>", shortcut: "sf", desc: "Scan live Google SERP features, Zero-Click Threat index & Rich Snippet capture playbook", flags: ["--json"] },
       { name: "page <url|file>", shortcut: "pg", desc: "Detailed On-Page DOM + Off-Page GSC Performance Audit", flags: ["--check-links", "--json"] },
+      { name: "headings <url|file>", shortcut: "ht", desc: "Heading hierarchy tree validator: H1-H6 nesting, depth, empty tags & health score", flags: ["--keyword", "--json"] },
       { name: "site-audit [sitemap]", shortcut: "crl", desc: "Full site crawl, broken links (404/500), image alts & AI report", flags: ["--check-links", "--report", "--json"] },
+      { name: "orphans [sitemap|url]", shortcut: "il", desc: "Internal link equity & orphan page rescue: Detect 0-link pages, click depth & suggested rescue sources", flags: ["--limit", "--concurrency", "--csv", "--json"] },
+      { name: "speed-correlate [url]", shortcut: "cwv", desc: "Correlate Core Web Vitals (LCP/CLS) directly with Search Console impressions & projected traffic surge", flags: ["--days", "--strategy", "-d", "--json"] },
+      { name: "firewall [url]", shortcut: "ai-bots", desc: "Scan /robots.txt & edge WAF/Cloudflare bot challenges for ChatGPT, Claude & Perplexity", flags: ["--user-agent", "--json"] },
+      { name: "security [url]", shortcut: "sec", desc: "Security Headers & Mixed Content Auditor: HSTS preload, CSP, clickjacking & SSL/TLS certificate expiry", flags: ["--json"] },
+      { name: "landing-roi [url]", shortcut: "roi", desc: "Landing Page Economic ROI & Revenue Hemorrhage: Merge GSC clicks with GA4 bounce rates to calculate dollar revenue leaks", flags: ["--aov", "--conv-rate", "--benchmark", "--clicks", "--bounce", "--csv", "--json"] },
+      { name: "schema-generate [url]", shortcut: "schema-gen", desc: "Structured Data Rich Snippet Generator: Auto-synthesizes valid Schema.org JSON-LD (Product, FAQ, HowTo, Article, Software) with Google validation", flags: ["--type", "--price", "--currency", "--rating", "--format", "--open", "--json"] },
+      { name: "sitemap-tree [path|url]", shortcut: "smt", desc: "Sitemap Index Hierarchy & Coverage Auditor: Recursive sub-sitemap tree, Google 50k URL / 50MB compliance & GSC coverage ratio", flags: ["--csv", "--json"] },
+      { name: "titles [sitemap|url]", shortcut: "title-opt", desc: "Batch audit title pixel width (>580px) & synthesize non-truncating alternatives", flags: ["--overflow-only", "--limit", "--concurrency", "--csv", "--json"] },
+      { name: "image-seo <url|file>", shortcut: "img", desc: "Image SEO & Next-Gen Format Auditor: WebP/AVIF formats, missing alt text, explicit width/height for CLS & LCP preloading", flags: ["--check-size", "--limit", "--csv", "--json"] },
+      { name: "hreflang-check <url|file>", shortcut: "hreflang", desc: "International Hreflang Reciprocity Validator: Bidirectional link graph, ISO 639-1 / 3166-1 codes & x-default fallback", flags: ["--no-reciprocity", "--csv", "--json"] },
+      { name: "eeat <url|file>", shortcut: "author", desc: "Author E-E-A-T & Credential Auditor: Person schema, credentials, editorial reviews, dates & Knowledge Graph links", flags: ["--csv", "--json"] },
       { name: "audit", shortcut: "a", desc: "360-degree Comprehensive SEO & GA4 health audit", flags: ["--days", "-d"] },
-      { name: "zombies <sitemap>", shortcut: nil, desc: "Find zero-impression crawl waste pages over 90 days", flags: [] },
-      { name: "use <domain or 1-9>", shortcut: nil, desc: "Switch active default domain", flags: [] },
+      { name: "report [domain]", shortcut: "rep", desc: "Automated Executive SEO & AI Search Report Generator: Single-file HTML dashboard & Markdown reports", flags: ["--html", "--md", "--days", "--title", "--json"] },
+      { name: "intent-shift [domain]", shortcut: "intent", desc: "Search Intent Drift & Landing Page Mismatch Tracker: Detect transactional/informational intent divergence & compute Portfolio Volatility Index", flags: ["--days", "--brand", "--csv", "--json"] },
+      { name: "rich-results <url|file>", shortcut: "rich-test", desc: "Google Rich Results Testing & Validation Suite: Disqualifying errors, recommended enhancements, 1-click JSON-LD fixes & browser testing", flags: ["--open", "--patch", "--csv", "--json"] },
+      { name: "watch [domain]", shortcut: "mon", desc: "Continuous SERP Watchdog & Rank Drift Monitor: Real-time rank drop alerts, CTR crash detection, webhooks & automated cron/launchd daemon", flags: ["--once", "--daemon", "--interval", "--threshold", "--webhook", "--slack", "--cron", "--launchd", "--systemd", "--csv", "--json"] },
+      { name: "kw-value [domain]", shortcut: "kwval", desc: "Conversion-Weighted Keyword Opportunity Matrix: Calculate revenue per keyword, simulate Top 3 pipeline upside & prioritize high-buyer-intent terms", flags: ["--aov", "--conv-rate", "--margin", "--target-pos", "--days", "--csv", "--json"] },
+      { name: "mobile-parity [domain]", shortcut: "mobile", desc: "Mobile vs. Desktop SERP Parity Auditor: Cross-device rank gaps, responsive suppression penalties & mobile CTR loss diagnosis", flags: ["--days", "--min-imp", "--gap-threshold", "--csv", "--json"] },
+      { name: "aio-hunter [query|domain]", shortcut: "aio", desc: "Google AI Overview (AIO) Opportunity Hunter: Detects AIO SERP presence, extracts cited sources, quantifies citation gaps & generates snippet capture recipes", flags: ["--limit", "--min-imp", "--days", "--csv", "--json"] },
+      { name: "skill-pack [dir]", shortcut: "agent-pack", desc: "Autonomous AI Agent Skill Packaging Engine: Synthesizes production SKILL.md, recipes.json & integration hooks for Antigravity, Claude Code & Cursor", flags: ["--target", "--dir", "--dry-run", "--json"] },
+      { name: "zombies [sitemap|file]", shortcut: "z", desc: "Zombie Content Purger & Crawl Equity Optimizer: CEDI score (0-100), automated 410/301 triage & 1-click server rules", flags: ["--days", "--threshold", "--action", "--format", "--inventory", "--csv", "--json"] },
+      { name: "soft-404 [url|file]", shortcut: "404", desc: "404 & Soft-404 Crawl Error Diagnostic: Detects thin/empty pages returning 200 OK, calculates crawl waste & synthesizes smart 301/410 redirect rules", flags: ["--concurrency", "--threshold", "--format", "--csv", "--json"] },
+      { name: "switch <domain>", shortcut: "use", desc: "Instant agency domain & credentials switcher (domain, alias, or index #)", flags: ["--json"] },
+      { name: "vault [action]", shortcut: nil, desc: "Agency Credential Vault: AES-256-GCM encrypted store for 50+ service accounts (list, add, remove, status)", flags: ["--domain", "--alias", "--property", "--json"] },
       { name: "domains", shortcut: nil, desc: "List verified domains and GA4 property links", flags: [] },
+      { name: "doctor", shortcut: "doc", desc: "Zero-Dependency Architecture Certification & System Health: Verifies 100% pure Ruby stdlib, cold-start latency (<100ms), OpenSSL cipher support & config permissions", flags: ["--strict", "--fix", "--json"] },
       { name: "where", shortcut: nil, desc: "Inspect installation path, active key, and config file", flags: [] },
       { name: "connect", shortcut: nil, desc: "1-Click Setup Wizard: auto-detects key or drag & drop", flags: [] },
       { name: "connect-ga4", shortcut: nil, desc: "Interactive GA4 linking wizard", flags: [] },
-      { name: "open", shortcut: nil, desc: "Reveal configuration directory (~/.config/gsc) in Finder", flags: [] },
       { name: "prompts [id]", shortcut: "pb", desc: "25 Autonomous AI SEO Playbooks & ready-to-paste prompts", flags: ["--copy", "--json"] },
       { name: "skills [install|show]", shortcut: nil, desc: "Inspect or auto-install AI Agent Skill", flags: [] },
       { name: "commands", shortcut: nil, desc: "List all commands (human-readable or JSON with --json)", flags: ["--json"] }
@@ -271,7 +305,7 @@ COMMAND_REGISTRY = [
       2. **Optimal Length**: Keep `<title>` between **50 and 60 characters** (maximum 580px width) so Google does not truncate with `...`.
       3. **Emotional Hook / CTR Multiplier**: Include brackets `[Free Calculator]`, actionable numbers (`10 Best`, `2026 Checklist`), or primary value props.
       4. **Brand Suffix**: Always append ` | BrandName` at the end.
-      5. **Meta Description**: 130–155 characters summarizing the page benefit with a clear call-to-action (e.g. *"Calculate exact moving box counts by room, size, and weight. Free instant estimator."*).
+      5. **Meta Description**: 130–155 characters summarizing the page benefit with a clear call-to-action (e.g. *"Inspect technical SEO health, Core Web Vitals, and index coverage instantly. Free diagnostic audit."*).
       6. **Heading Polish**: Ensure `<h1>` matches search intent and **never ends with a period (`.`)**.
       
       #### Step 4: Immediately Trigger Googlebot Indexing

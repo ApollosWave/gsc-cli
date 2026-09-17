@@ -50,6 +50,32 @@ module GSC
       found
     end
 
+    def self.find_service_account(custom_path = nil, domain = nil)
+      # 1. Check custom path first if provided
+      if custom_path && File.file?(File.expand_path(custom_path))
+        json = JSON.parse(File.read(File.expand_path(custom_path))) rescue nil
+        return { data: json, source: custom_path, type: 'file' } if json && json['client_email']
+      end
+
+      # 2. Check Agency Vault for domain or active domain
+      target_dom = domain || Config.default_domain
+      if target_dom
+        vault_key = Vault.key_for_domain(target_dom)
+        if vault_key && vault_key['client_email']
+          return { data: vault_key, source: "vault:#{target_dom}", type: 'vault' }
+        end
+      end
+
+      # 3. Check filesystem key candidates
+      key_file = find_key(custom_path)
+      if key_file
+        json = JSON.parse(File.read(key_file)) rescue nil
+        return { data: json, source: key_file, type: 'file' } if json && json['client_email']
+      end
+
+      nil
+    end
+
     def self.fetch_access_token(service_account)
       now = Time.now.to_i
       header = { alg: 'RS256', typ: 'JWT' }

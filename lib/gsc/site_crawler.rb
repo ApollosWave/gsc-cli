@@ -26,18 +26,53 @@ module GSC
       urls = urls.first(@options[:limit]) if @options[:limit] && @options[:limit] > 0
 
       total = urls.size
-      urls.each_with_index do |url, idx|
-        progress_block.call(url, idx + 1, total) if block_given?
+      concurrency = (@options[:concurrency] || 5).to_i
+      concurrency = 1 if concurrency < 1
+      concurrency = [concurrency, 20].min
+      concurrency = [concurrency, total].min if total > 0
 
-        analyzer = PageAnalyzer.new(url)
-        page_data = analyzer.fetch_and_analyze(
-          check_links: @options[:check_links] || false,
-          gsc_api: @options[:gsc_api],
-          active_domain: @options[:active_domain]
-        )
+      if concurrency <= 1 || total <= 1
+        urls.each_with_index do |url, idx|
+          progress_block.call(url, idx + 1, total) if block_given?
 
-        @results << page_data
-        categorize_page_issues(page_data)
+          page_data = safe_analyze_page(url)
+          @results << page_data
+          categorize_page_issues(page_data)
+        end
+      else
+        require 'thread'
+        queue = Queue.new
+        urls.each_with_index { |url, idx| queue << [url, idx] }
+
+        indexed_results = []
+        mutex = Mutex.new
+        completed_count = 0
+
+        workers = Array.new(concurrency) do
+          Thread.new do
+            loop do
+              item = begin
+                queue.pop(true)
+              rescue ThreadError
+                nil
+              end
+              break unless item
+
+              url, idx = item
+              page_data = safe_analyze_page(url)
+
+              mutex.synchronize do
+                completed_count += 1
+                indexed_results << [idx, page_data]
+                categorize_page_issues(page_data)
+                progress_block.call(url, completed_count, total) if block_given?
+              end
+            end
+          end
+        end
+
+        workers.each(&:join)
+        @results = indexed_results.sort_by(&:first).map(&:last)
       end
 
       aggregate_summary
@@ -157,7 +192,7 @@ module GSC
     end
 
     def aggregate_summary
-      critical_errors = @broken_links.size + @results.count { |r| r[:indexability][:noindex] }
+      critical_errors = @broken_links.size + @results.count { |r| r.dig(:indexability, :noindex) || false }
       total_issues = critical_errors + @missing_alts.size + @heading_issues.size + @title_issues.size + @canonical_issues.size
 
       {
@@ -173,6 +208,28 @@ module GSC
     end
 
     private
+
+    def safe_analyze_page(url)
+      analyzer = PageAnalyzer.new(url)
+      analyzer.fetch_and_analyze(
+        check_links: @options[:check_links] || false,
+        gsc_api: @options[:gsc_api],
+        active_domain: @options[:active_domain]
+      )
+    rescue StandardError => e
+      {
+        url: url,
+        http_status: 0,
+        response_time_ms: 0,
+        title: { text: '', length: 0, pixel_est: 0.0, ok: false },
+        meta_description: { text: '', length: 0, ok: false },
+        canonical: { url: nil, self_referencing: false },
+        headings: { count: 0, h1_count: 0, score: 0, grade: 'F', violations: [], list: [] },
+        images: { total: 0, missing_alt_count: 0, missing_alt: [] },
+        links: { total: 0, internal_count: 0, external_count: 0, internal: [], external: [] },
+        issues: [{ level: :error, type: :network, message: "Crawl failure: #{e.message}" }]
+      }
+    end
 
     def discover_urls(target)
       if target.end_with?('.xml') || target.include?('sitemap')
@@ -217,18 +274,42 @@ module GSC
       end
 
       # Headings
-      h1_count = data.dig(:headings, :h1_count) || 0
+      headings_obj = data[:headings]
+      h1_count = if headings_obj.is_a?(Hash)
+                   headings_obj[:h1_count] || headings_obj['h1_count'] || 0
+                 elsif data[:h1].is_a?(Array)
+                   data[:h1].size
+                 else
+                   0
+                 end
+
       if h1_count == 0
         @heading_issues << { page_url: page_url, issue: "Missing <h1> tag (0 found)" }
       elsif h1_count > 1
         @heading_issues << { page_url: page_url, issue: "Multiple <h1> tags (#{h1_count} found)" }
       end
 
-      # Title & Meta
-      title_chars = data.dig(:title, :length) || 0
-      meta_chars = data.dig(:meta_description, :length) || 0
-      title_text = data.dig(:title, :text) || ''
-      meta_text = data.dig(:meta_description, :text) || ''
+      # Title
+      title_obj = data[:title]
+      title_text, title_chars = if title_obj.is_a?(Hash)
+                                  t = (title_obj[:text] || title_obj['text']).to_s
+                                  [t, (title_obj[:length] || title_obj['length'] || t.length).to_i]
+                                elsif title_obj.is_a?(String)
+                                  [title_obj, title_obj.length]
+                                else
+                                  ['', 0]
+                                end
+
+      # Meta Description
+      meta_obj = data[:meta_description]
+      meta_text, meta_chars = if meta_obj.is_a?(Hash)
+                                m = (meta_obj[:text] || meta_obj['text']).to_s
+                                [m, (meta_obj[:length] || meta_obj['length'] || m.length).to_i]
+                              elsif meta_obj.is_a?(String)
+                                [meta_obj, meta_obj.length]
+                              else
+                                ['', 0]
+                              end
 
       flaws = []
       flaws << "Title > 60 chars" if title_chars > 60
@@ -249,10 +330,21 @@ module GSC
       end
 
       # Canonical
-      if data.dig(:canonical, :url) && !data.dig(:canonical, :self_referencing)
+      canon_obj = data[:canonical]
+      canon_url = nil
+      self_ref = false
+      if canon_obj.is_a?(Hash)
+        canon_url = canon_obj[:url] || canon_obj['url']
+        self_ref = canon_obj[:self_referencing] || false
+      elsif canon_obj.is_a?(String)
+        canon_url = canon_obj
+        self_ref = (canon_url == page_url)
+      end
+
+      if canon_url && !self_ref
         @canonical_issues << {
           page_url: page_url,
-          canonical_url: data[:canonical][:url]
+          canonical_url: canon_url
         }
       end
     end

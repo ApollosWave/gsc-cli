@@ -63,7 +63,14 @@ class GoogleTrends
     explore_req['Cookie'] = cookies if cookies
 
     explore_res = http.request(explore_req)
-    return { ok: false, error: "Google Trends Explore API error (HTTP #{explore_res.code})" } unless explore_res.is_a?(Net::HTTPSuccess)
+    if explore_res.code == '302'
+      loc = explore_res['location'].to_s
+      return { ok: false, error: "Google Trends rate limit or bot challenge triggered (HTTP 302 redirect to #{loc.include?('sorry') ? 'Google CAPTCHA' : 'redirect'}). Google is temporarily throttling Trends requests from this network. Try again in a few minutes, or use 'gsc suggest' / 'gsc planner'." }
+    elsif explore_res.code == '429' || init_res.code == '429'
+      return { ok: false, error: "Google Trends rate limit reached (HTTP 429 - Too Many Requests). Google is temporarily throttling Trends requests from this network. Try again in a few minutes, or use 'gsc suggest' / 'gsc planner'." }
+    elsif !explore_res.is_a?(Net::HTTPSuccess)
+      return { ok: false, error: "Google Trends Explore API error (HTTP #{explore_res.code})" }
+    end
 
     raw_exp = explore_res.body.to_s
     clean_body = raw_exp.index('{') ? raw_exp[raw_exp.index('{')..] : raw_exp

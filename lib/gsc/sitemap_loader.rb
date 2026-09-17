@@ -4,9 +4,18 @@ require 'net/http'
 require 'uri'
 require 'zlib'
 require 'stringio'
+require 'cgi'
 
 module GSC
   class SitemapLoader
+    def initialize(path_or_url = nil)
+      @path_or_url = path_or_url
+    end
+
+    def load(default_origin = nil)
+      self.class.resolve_urls(@path_or_url, default_origin, quiet: true)
+    end
+
     def self.fetch_content(path_or_url)
       if path_or_url.start_with?('http://', 'https://')
         uri = URI(path_or_url)
@@ -61,14 +70,15 @@ module GSC
       end
 
       xml = fetch_content(target_input)
+      clean_xml = xml.to_s.gsub(/<!\[CDATA\[(.*?)\]\]>/m, '\1')
       urls = []
 
       # Parse child sitemaps if this is a sitemap index
-      sitemap_locs = xml.scan(/<sitemap>\s*<loc>([^<]+)<\/loc>/m).flatten
+      sitemap_locs = clean_xml.scan(/<sitemap>\s*<loc>([^<]+)<\/loc>/m).flatten
       if sitemap_locs.any?
         puts "📑 Found #{sitemap_locs.size} nested sitemaps in index..." unless quiet
         sitemap_locs.each do |child_url|
-          child_url = child_url.strip
+          child_url = CGI.unescapeHTML(child_url.strip)
           unless child_url.start_with?('http://', 'https://')
             puts Color.c("   ⚠️ Skipping non-HTTP child sitemap location: #{child_url}", Color::YELLOW) unless quiet
             next
@@ -76,13 +86,14 @@ module GSC
           puts "   ↳ Loading child sitemap: #{child_url}" unless quiet
           begin
             child_xml = fetch_content(child_url)
-            urls.concat(child_xml.scan(/<url>\s*<loc>([^<]+)<\/loc>/m).flatten.map(&:strip))
+            clean_child = child_xml.to_s.gsub(/<!\[CDATA\[(.*?)\]\]>/m, '\1')
+            urls.concat(clean_child.scan(/<url>\s*<loc>([^<]+)<\/loc>/m).flatten.map { |u| CGI.unescapeHTML(u.strip) })
           rescue StandardError => e
             puts Color.c("   ⚠️ Warning: Could not load child sitemap #{child_url}: #{e.message}", Color::YELLOW) unless quiet
           end
         end
       else
-        urls.concat(xml.scan(/<loc>([^<]+)<\/loc>/m).flatten.map(&:strip))
+        urls.concat(clean_xml.scan(/<loc>([^<]+)<\/loc>/m).flatten.map { |u| CGI.unescapeHTML(u.strip) })
       end
 
       urls.uniq

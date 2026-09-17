@@ -4,8 +4,8 @@ require_relative 'test_helper'
 
 class AdvancedFeaturesTest < Minitest::Test
   def test_google_suggest_instance
-    sug = GSC::GoogleSuggest.new('moving boxes')
-    assert_equal 'moving boxes', sug.query
+    sug = GSC::GoogleSuggest.new('seo audit')
+    assert_equal 'seo audit', sug.query
   end
 
   def test_open_page_rank_clean_domain

@@ -3,6 +3,7 @@
 
 require 'net/http'
 require 'uri'
+require 'set'
 
 module GSC
   class NetworkTracer
@@ -63,7 +64,13 @@ module GSC
         hops << hop_info
 
         if [301, 302, 303, 307, 308].include?(status_code) && location
-          current_url = URI.join(current_url, location).to_s
+          next_url = begin
+                       URI.join(current_url, location.strip).to_s
+                     rescue StandardError
+                       nil
+                     end
+          break unless next_url
+          current_url = next_url
         else
           break
         end

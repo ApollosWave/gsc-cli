@@ -2,10 +2,27 @@
 # frozen_string_literal: true
 
 require 'json'
+require_relative 'schema_generator'
 
 module GSC
   class SchemaValidator
     attr_reader :url, :schemas, :validation_results
+
+    AVAILABLE_TEMPLATES = [
+      { type: 'faq',           name: 'FAQPage',             feature: 'Interactive FAQ Accordion Drop-down' },
+      { type: 'product',       name: 'Product',             feature: 'Merchant Rich Card, Star Ratings & Prices' },
+      { type: 'software',      name: 'SoftwareApplication', feature: 'App Card, OS Badge, Pricing & Rating' },
+      { type: 'breadcrumb',    name: 'BreadcrumbList',      feature: 'Hierarchical SERP Navigation Path' },
+      { type: 'article',       name: 'Article',             feature: 'Google Top Stories Carousel & Author E-E-A-T' },
+      { type: 'howto',         name: 'HowTo',               feature: 'Step-by-Step Guided Instructions' },
+      { type: 'course',        name: 'Course',              feature: 'Course Carousel & Provider Card' },
+      { type: 'job',           name: 'JobPosting',          feature: 'Google for Jobs Interactive Listing' },
+      { type: 'event',         name: 'Event',               feature: 'Event Schedule, Venue & Ticket Offers' },
+      { type: 'localbusiness', name: 'LocalBusiness',       feature: 'Google Maps & Local 3-Pack with Hours/Phone' },
+      { type: 'video',         name: 'VideoObject',         feature: 'Video SERP Thumbnail & Key Moments' },
+      { type: 'recipe',        name: 'Recipe',              feature: 'Recipe Card with Cook Time & Nutrition' },
+      { type: 'organization',  name: 'Organization',        feature: 'Brand Knowledge Graph Panel & Logo' }
+    ].freeze
 
     def initialize(url)
       @url = url.to_s.strip
@@ -14,7 +31,8 @@ module GSC
     def audit
       pa = GSC::PageAnalyzer.new(@url)
       data = pa.fetch_and_analyze
-      @schemas = data.dig(:structured_data, :schemas) || []
+      raw_schemas = data[:schema] || data.dig(:structured_data, :schemas) || []
+      @schemas = self.class.flatten_schemas(raw_schemas)
 
       results = []
       @schemas.each_with_index do |schema, idx|
@@ -26,6 +44,22 @@ module GSC
         total_schemas: @schemas.length,
         schemas: results
       }
+    end
+
+    def self.flatten_schemas(items)
+      return [] unless items.is_a?(Array)
+      items.flat_map do |item|
+        target = item.is_a?(Hash) && (item[:data] || item['data']) ? (item[:data] || item['data']) : item
+        if target.is_a?(Hash) && target['@graph'].is_a?(Array)
+          flatten_schemas(target['@graph'])
+        elsif target.is_a?(Array)
+          flatten_schemas(target)
+        elsif target.is_a?(Hash)
+          [target]
+        else
+          []
+        end
+      end
     end
 
     def validate_single_schema(schema, idx)
@@ -80,43 +114,7 @@ module GSC
     end
 
     def self.generate_template(type, params = {})
-      case type.to_s.downcase
-      when 'faq'
-        {
-          '@context' => 'https://schema.org',
-          '@type' => 'FAQPage',
-          'mainEntity' => [
-            {
-              '@type' => 'Question',
-              'name' => params[:question] || 'What is PackingLog?',
-              'acceptedAnswer' => {
-                '@type' => 'Answer',
-                'text' => params[:answer] || 'PackingLog is a free moving box and inventory management system.'
-              }
-            }
-          ]
-        }
-      when 'software', 'app'
-        {
-          '@context' => 'https://schema.org',
-          '@type' => 'SoftwareApplication',
-          'name' => params[:name] || 'PackingLog',
-          'applicationCategory' => params[:category] || 'UtilitiesApplication',
-          'operatingSystem' => 'Web, iOS, Android',
-          'offers' => {
-            '@type' => 'Offer',
-            'price' => '0',
-            'priceCurrency' => 'USD'
-          }
-        }
-      else
-        {
-          '@context' => 'https://schema.org',
-          '@type' => 'Organization',
-          'name' => params[:name] || 'PackingLog',
-          'url' => params[:url] || 'https://packinglog.com'
-        }
-      end
+      GSC::SchemaGenerator.new.generate(type, params)[:schema]
     end
   end
 end

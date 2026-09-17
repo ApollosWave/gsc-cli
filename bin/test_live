@@ -1,0 +1,246 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+# frozen_string_literal: true
+
+# ==============================================================================
+# Complete 80-Command Automated Live Terminal Showcase & Test Runner for GSC-CLI
+# ==============================================================================
+# Usage:
+#   ./bin/test_live              # Auto-run ALL 80 commands (1.0s delay)
+#   ./bin/test_live --step       # Interactive: press [Enter] to advance each command
+#   ./bin/test_live --showcase   # Run curated Top 30 visual showcase commands
+#   ./bin/test_live --delay 2    # Custom 2-second pause between commands
+#   ./bin/test_live --filter aio # Run only commands matching 'aio'
+# ==============================================================================
+
+require 'optparse'
+require 'open3'
+require 'time'
+
+# ANSI Formatting
+BOLD   = "\e[1m"
+DIM    = "\e[2m"
+CYAN   = "\e[36m"
+GREEN  = "\e[32m"
+YELLOW = "\e[33m"
+MAGENTA= "\e[35m"
+RED    = "\e[31m"
+RESET  = "\e[0m"
+
+options = {
+  mode: :auto,
+  delay: 1.0,
+  binary: nil,
+  filter: nil,
+  showcase_only: false
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
+
+  opts.on('--step', 'Pause and wait for [Enter] before executing next command') do
+    options[:mode] = :step
+  end
+
+  opts.on('--delay SECONDS', Float, 'Delay in seconds between commands in auto mode (default: 1.0)') do |sec|
+    options[:delay] = [sec, 0.05].max
+  end
+
+  opts.on('--showcase', 'Run curated Top 30 visual showcase commands only') do
+    options[:showcase_only] = true
+  end
+
+  opts.on('--binary PATH', 'Custom path to gsc executable') do |b|
+    options[:binary] = b
+  end
+
+  opts.on('--filter PATTERN', 'Only run commands matching PATTERN') do |p|
+    options[:filter] = p.downcase
+  end
+
+  opts.on('-h', '--help', 'Show help options') do
+    puts opts
+    exit 0
+  end
+end.parse!(ARGV)
+
+# Detect binary
+binary = options[:binary] || `which gsc 2>/dev/null`.strip
+if binary.empty? || !File.executable?(binary)
+  local_dist = File.expand_path('../dist/gsc', __dir__)
+  binary = local_dist if File.executable?(local_dist)
+end
+
+abort "#{RED}❌ Error: Could not locate executable 'gsc'. Run 'rake build:standalone' first.#{RESET}" unless binary && File.executable?(binary)
+
+DOMAIN = ENV['TEST_DOMAIN'] || 'example.com'
+SITE = "https://#{DOMAIN}"
+
+# Complete 80 Production Commands Catalog
+ALL_COMMANDS = [
+  # 1. Setup, Doctor & System Diagnostics
+  { name: 'Zero-Gem System Doctor Benchmark',     cmd: "#{binary} doctor", showcase: true },
+  { name: 'Semantic Version & Runtime Info',      cmd: "#{binary} version", showcase: true },
+  { name: 'Active Project Working Directory',     cmd: "#{binary} where", showcase: false },
+  { name: 'Verified GSC Domain Inventory',        cmd: "#{binary} domains", showcase: true },
+  { name: 'Master Command Registry Catalog',      cmd: "#{binary} commands --limit 10", showcase: false },
+  { name: 'AI Engineering Skill Pack',            cmd: "#{binary} skills show", showcase: true },
+  { name: 'Agency Vault Encryption Status',       cmd: "#{binary} vault status", showcase: true },
+  { name: 'Agency Vault Domain Keyring List',     cmd: "#{binary} vault list", showcase: false },
+  { name: 'Local SQLite Disk Cache Status',       cmd: "#{binary} cache status", showcase: false },
+
+  # 2. 360° Visual Scorecards & Trend Sparklines
+  { name: '360° Executive SEO & AI Scorecard',    cmd: "#{binary} report --sparkline --days 30", showcase: true },
+  { name: 'ASCII Trend Sparklines & Trajectory',  cmd: "#{binary} sparklines technical-seo --days 30", showcase: true },
+  { name: 'Raw Numbers Inline Sparkline Plotter', cmd: "#{binary} sparklines --data 12,24,35,48,65,82,98", showcase: false },
+  { name: 'Google Trends Velocity & Momentum',    cmd: "#{binary} trends search-console", showcase: true },
+  { name: 'Free Autocomplete Intent Expander',    cmd: "#{binary} planner search-console", showcase: true },
+  { name: 'Mathematical Keyword Dollar Matrix',   cmd: "#{binary} kw-value --domain #{DOMAIN}", showcase: true },
+
+  # 3. Generative Engine Optimization (GEO) & AI Search
+  { name: 'Google AI Overview Opportunity Radar', cmd: "#{binary} aio-hunter search-console", showcase: true },
+  { name: 'LLM Citability Simulator & Heuristics',cmd: "#{binary} cite-sim #{SITE}/seo-guide", showcase: true },
+  { name: 'Direct Answer Snippet Synthesizer',    cmd: "#{binary} answer \"what is technical seo\"", showcase: true },
+  { name: 'AI Bot Crawl & Firewall Scanner',      cmd: "#{binary} firewall #{SITE}", showcase: true },
+  { name: 'GEO Citability Scorecard',             cmd: "#{binary} geo #{SITE}", showcase: false },
+  { name: 'Entity Knowledge Graph Auditor',       cmd: "#{binary} entity #{SITE}", showcase: false },
+  { name: 'Live SERP Features & PAA Radar',       cmd: "#{binary} serp-features \"what is technical seo\"", showcase: true },
+  { name: 'Google Autocomplete Seed Harvester',   cmd: "#{binary} suggest search-console", showcase: false },
+  { name: 'People Also Ask (PAA) Question Miner', cmd: "#{binary} questions search-console", showcase: false },
+
+  # 4. Technical SEO, Soft-404s & Redirect Generation
+  { name: 'Soft-404 Forensic Diagnostics',        cmd: "#{binary} soft-404 #{SITE}/old-blog", showcase: true },
+  { name: '1-Click Nginx Redirect Generator',     cmd: "#{binary} soft-404 #{SITE}/old-blog --fix nginx", showcase: true },
+  { name: 'Cross-Device SERP Parity Auditor',     cmd: "#{binary} mobile-parity #{DOMAIN}", showcase: true },
+  { name: 'Instant JSON-LD Schema Generator',     cmd: "#{binary} schema-gen #{SITE} --type SoftwareApplication", showcase: true },
+  { name: 'Schema Rich Snippet Template Builder', cmd: "#{binary} schema faq", showcase: false },
+  { name: 'Google Rich Results Eligibility Test', cmd: "#{binary} rich-results #{SITE}", showcase: true },
+  { name: 'Search Intent Volatility Drift',       cmd: "#{binary} intent-shift #{DOMAIN}", showcase: true },
+  { name: 'International Hreflang Reciprocity',   cmd: "#{binary} hreflang-check #{SITE} --no-reciprocity", showcase: true },
+  { name: 'Next-Gen Image SEO & CLS Weight',      cmd: "#{binary} image-seo #{SITE}", showcase: true },
+  { name: 'Author E-E-A-T Signal & Trust Audit',  cmd: "#{binary} eeat #{SITE}", showcase: true },
+
+  # 5. On-Page Structure, Crawl Equity & Zombies
+  { name: 'H1-H6 Heading Structure & Hierarchy',  cmd: "#{binary} headings #{SITE}", showcase: true },
+  { name: 'Full On-Page Diagnostic Crawler',      cmd: "#{binary} page #{SITE}", showcase: true },
+  { name: 'Robots.txt Directive & Crawl Checker', cmd: "#{binary} robots #{SITE}", showcase: false },
+  { name: 'HTTP Redirect Trace Chain Inspector',  cmd: "#{binary} trace #{SITE}", showcase: false },
+  { name: 'Sitemap Hierarchy Tree & Limits',      cmd: "#{binary} sitemap-tree #{SITE}/sitemap.xml", showcase: true },
+  { name: 'Zombie Page Crawl Equity Purge',       cmd: "#{binary} zombies --threshold 0", showcase: true },
+  { name: 'Orphan Page Link Equity Rescue',       cmd: "#{binary} orphans #{SITE} --limit 5", showcase: false },
+  { name: 'SERP Pixel Width & CTR Preview',       cmd: "#{binary} serp \"ExampleApp: Fast Search Intelligence\"", showcase: false },
+  { name: 'Title Tag Pixel Width Truncation',     cmd: "#{binary} titles #{SITE} --limit 5", showcase: false },
+  { name: 'Canonical Loop & Chain Breaker',       cmd: "#{binary} canonical-chains #{SITE}", showcase: false },
+  { name: 'Multi-Page LLM Agent Knowledge Pack',  cmd: "#{binary} llms #{SITE} --package", showcase: false },
+  { name: 'Low-CTR Title Tag Rewrite Engine',     cmd: "#{binary} low-ctr search-console", showcase: true },
+  { name: 'Security Headers & Mixed Content',     cmd: "#{binary} security #{SITE}", showcase: false },
+  { name: 'Landing Page Revenue Leakage ROI',     cmd: "#{binary} landing-roi #{SITE}/pricing --clicks 1200 --bounce 72", showcase: false },
+  { name: 'Core Web Vitals vs GSC Correlation',   cmd: "#{binary} speed-correlate #{SITE} -d #{DOMAIN} --days 7", showcase: false },
+  { name: 'Backlinks & Anchor Text Monitor',      cmd: "#{binary} backlinks #{DOMAIN}", showcase: false },
+  { name: 'Continuous SERP Watchdog Single-Pass', cmd: "#{binary} watch #{DOMAIN} --once", showcase: false },
+  { name: 'Autonomous Agent Skill Pack Generator',cmd: "#{binary} skill-pack --dry-run", showcase: false },
+  { name: 'Seasonal Spike & Surge Predictor',     cmd: "#{binary} seasonal search-console", showcase: true },
+
+  # 6. Authenticated Search Analytics & Playbooks
+  { name: 'Live Search Analytics Performance',    cmd: "#{binary} performance --days 7 -d #{DOMAIN}", showcase: true },
+  { name: 'Brand vs Non-Brand Split Summary',     cmd: "#{binary} brand --days 7 -d #{DOMAIN}", showcase: true },
+  { name: 'CTR Curve & Click Gain Simulator',     cmd: "#{binary} ctr-curve --days 7 -d #{DOMAIN}", showcase: true },
+  { name: 'Top 5 Human Organic Queries',          cmd: "#{binary} top-queries --limit 5 -d #{DOMAIN}", showcase: true },
+  { name: 'Top Brand-Specific Search Queries',    cmd: "#{binary} top-queries --brand --limit 5 -d #{DOMAIN}", showcase: false },
+  { name: 'Top Non-Brand High-Intent Queries',    cmd: "#{binary} top-queries --non-brand --limit 5 -d #{DOMAIN}", showcase: false },
+  { name: 'Top Queries (Machine-Readable JSON)',  cmd: "#{binary} top-queries --limit 5 --json -d #{DOMAIN}", showcase: false },
+  { name: 'Top 5 Organic Landing Pages',          cmd: "#{binary} top-pages --limit 5 -d #{DOMAIN}", showcase: true },
+  { name: 'Striking-Distance Opportunities',      cmd: "#{binary} opportunities --limit 5 -d #{DOMAIN}", showcase: true },
+  { name: 'Page-2 Tactical Strike Playbook',      cmd: "#{binary} strike --limit 3 -d #{DOMAIN}", showcase: true },
+  { name: 'Underperforming High-Impression Pages',cmd: "#{binary} underperformers --limit 5 -d #{DOMAIN}", showcase: false },
+  { name: 'Keyword Cannibalization Conflicts',    cmd: "#{binary} cannibalization -d #{DOMAIN}", showcase: true },
+  { name: 'PAA Harvested Questions Matrix',       cmd: "#{binary} questions-harvest --limit 5 -d #{DOMAIN}", showcase: false },
+  { name: 'Rank & Click Traffic Decay Predictor', cmd: "#{binary} decay -d #{DOMAIN}", showcase: true },
+  { name: 'Mobile vs Desktop Device Split',       cmd: "#{binary} devices -d #{DOMAIN}", showcase: false },
+  { name: 'Global Geographic Traffic Countries',  cmd: "#{binary} countries --limit 5 -d #{DOMAIN}", showcase: false },
+  { name: 'SERP Rich Snippet Click Types',       cmd: "#{binary} snippets -d #{DOMAIN}", showcase: false },
+  { name: 'Google Search Console Sitemap List',   cmd: "#{binary} sitemaps-list -d #{DOMAIN}", showcase: false },
+  { name: '360° Comprehensive Full Site Audit',   cmd: "#{binary} audit --days 7 -d #{DOMAIN}", showcase: true },
+
+  # 7. Inspection, Indexing API & Playbook Prompts
+  { name: 'Live URL Index Status Inspection',     cmd: "#{binary} inspect #{SITE}/ -d #{DOMAIN}", showcase: false },
+  { name: 'Direct Google Indexing API (Dry Run)', cmd: "#{binary} index #{SITE}/ --dry-run -d #{DOMAIN}", showcase: true },
+  { name: 'Google URL De-Indexing Ping (Dry Run)',cmd: "#{binary} remove #{SITE}/old --dry-run -d #{DOMAIN}", showcase: false },
+  { name: 'Automated Indexing Queue Status',      cmd: "#{binary} index-batch status", showcase: true },
+  { name: 'Indexing Queue Processor (Dry Run)',   cmd: "#{binary} index-batch run --dry-run", showcase: false },
+  { name: 'Google Analytics 4 Properties List',   cmd: "#{binary} ga4-properties", showcase: false },
+  { name: 'Strategic Playbook Prompts Catalog',   cmd: "#{binary} prompts list", showcase: false },
+  { name: 'Tactical Playbook Prompt 1 (Striking)',cmd: "#{binary} prompts 1", showcase: false }
+]
+
+filtered = ALL_COMMANDS
+filtered = filtered.select { |c| c[:showcase] } if options[:showcase_only]
+filtered = filtered.select { |c| c[:name].downcase.include?(options[:filter]) || c[:cmd].downcase.include?(options[:filter]) } if options[:filter]
+
+if filtered.empty?
+  puts "#{YELLOW}No commands matched your filter.#{RESET}"
+  exit 0
+end
+
+puts "\n#{BOLD}#{CYAN}╔═══════════════════════════════════════════════════════════════════════════╗#{RESET}"
+puts "#{BOLD}#{CYAN}║     🚀 GSC-CLI AUTOMATED LIVE TERMINAL SHOWCASE (v2.2.0)                  ║#{RESET}"
+puts "#{BOLD}#{CYAN}╚═══════════════════════════════════════════════════════════════════════════╝#{RESET}"
+puts " Executable: #{GREEN}#{binary}#{RESET}"
+puts " Suite:      #{BOLD}#{filtered.size} of #{ALL_COMMANDS.size} production commands queued#{RESET}#{options[:showcase_only] ? " (Showcase Mode)" : " (Full Catalog)"}"
+puts " Mode:       #{options[:mode] == :step ? "#{YELLOW}Step-by-step ([Enter] to advance)#{RESET}" : "#{GREEN}Auto-play (#{options[:delay]}s pause)#{RESET}"}"
+puts "#{DIM}─────────────────────────────────────────────────────────────────────────────#{RESET}\n"
+
+if options[:mode] == :step
+  print "#{YELLOW}Press [Enter] to start the showcase...#{RESET}"
+  $stdin.gets
+end
+
+total_start = Time.now
+passed = 0
+failed = 0
+
+filtered.each_with_index do |item, index|
+  num = "[%02d/%02d]" % [index + 1, filtered.size]
+  display_cmd = item[:cmd].sub(/^#{Regexp.escape(binary)}/, 'gsc')
+
+  puts "\n#{CYAN}═══════════════════════════════════════════════════════════════════════════#{RESET}"
+  puts " #{BOLD}#{MAGENTA}▶️  #{num} #{item[:name]}#{RESET}"
+  puts " #{DIM}$ #{display_cmd}#{RESET}"
+  puts "#{CYAN}═══════════════════════════════════════════════════════════════════════════#{RESET}\n"
+
+  cmd_start = Time.now
+  success = system(item[:cmd])
+  cmd_duration = ((Time.now - cmd_start) * 1000).round(1)
+
+  if success
+    passed += 1
+    puts "\n#{GREEN}✔ Completed in #{cmd_duration}ms#{RESET}"
+  else
+    failed += 1
+    puts "\n#{RED}❌ Command exited with non-zero status in #{cmd_duration}ms#{RESET}"
+  end
+
+  # Remove any temporary test report html if created
+  File.delete("report-#{DOMAIN}.html") if File.exist?("report-#{DOMAIN}.html")
+  File.delete("report-example.com.html") if File.exist?("report-example.com.html")
+
+  if index < filtered.size - 1
+    if options[:mode] == :step
+      print "\n#{YELLOW}▶ Press [Enter] for next command (or 'q' to exit): #{RESET}"
+      answer = $stdin.gets&.strip
+      break if answer&.downcase == 'q'
+    else
+      sleep options[:delay]
+    end
+  end
+end
+
+total_duration = (Time.now - total_start).round(1)
+
+puts "\n#{BOLD}#{CYAN}═══════════════════════════════════════════════════════════════════════════#{RESET}"
+puts "#{BOLD}🏁 LIVE TERMINAL SHOWCASE COMPLETE#{RESET}"
+puts "#{BOLD}───────────────────────────────────────────────────────────────────────────#{RESET}"
+puts " • Total Executed: #{BOLD}#{passed + failed} of #{filtered.size} commands#{RESET} in #{total_duration}s"
+puts " • Successful:     #{GREEN}#{passed} passed#{RESET}"
+puts " • Failed:         #{failed.positive? ? "#{RED}#{failed} failed#{RESET}" : "#{GREEN}0 failures#{RESET}"}"
+puts "#{BOLD}#{CYAN}═══════════════════════════════════════════════════════════════════════════#{RESET}\n"

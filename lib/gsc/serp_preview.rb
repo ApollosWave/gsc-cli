@@ -68,9 +68,9 @@ module GSC
     end
 
     def generate_custom
-      url = @url.empty? ? "https://#{Config.default_domain || 'example.com'}/page" : @url
-      title = @custom_title || 'Example Page Title — High Growth Operator'
-      desc = @custom_desc || 'Discover how to automate your search presence, crawl budgets, and organic rankings with zero dependencies.'
+      url = @url.empty? ? (Config.default_domain ? "https://#{Config.default_domain}/page" : '/') : @url
+      title = @custom_title || 'Untitled Page'
+      desc = @custom_desc || ''
 
       build_result(
         url: url,

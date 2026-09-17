@@ -76,9 +76,28 @@ module GSC
       canonical_url = extract_link_attr(doc, 'canonical', 'href')
       robots_meta = extract_meta_content(doc, 'name', 'robots')
 
-      # 2. Detailed Headings Structure
-      headings = extract_headings(doc)
-      h1_list = headings.select { |h| h[:tag] == 'h1' }
+      # 2. Detailed Headings Structure & Hierarchy Depth
+      heading_audit = if defined?(HeadingValidator)
+                        HeadingValidator.analyze(doc, target_keywords: title_raw)
+                      else
+                        h_list = extract_headings(doc)
+                        h1_found = h_list.select { |h| h[:tag] == 'h1' }
+                        {
+                          score: h1_found.size == 1 ? 100 : 70,
+                          grade: h1_found.size == 1 ? 'A' : 'C',
+                          depth: h_list.map { |h| h[:tag][1].to_i }.max || 0,
+                          count: h_list.size,
+                          counts: h_list.group_by { |h| h[:tag] }.transform_values(&:size),
+                          h1_count: h1_found.size,
+                          empty_count: 0,
+                          headings: h_list,
+                          violations: [],
+                          ascii_tree: '',
+                          color_tree: ''
+                        }
+                      end
+      headings = heading_audit[:headings]
+      h1_list = headings.select { |h| h[:tag] == 'h1' && !h[:empty] }
 
       # 3. Images & Missing Alt Tags
       images_data = extract_images(doc)
@@ -123,8 +142,19 @@ module GSC
       issues << { level: :warn, type: :title, message: "Title > 568px width (~#{title_pixel_est}px, risks SERP truncation)" } if title_pixel_est > 568.0
       issues << { level: :warn, type: :meta, message: "Missing meta description" } if meta_desc.nil? || meta_desc.empty?
       issues << { level: :warn, type: :meta, message: "Meta description > 155 chars (#{meta_desc.length}c)" } if meta_desc && meta_desc.length > 155
-      issues << { level: :error, type: :headings, message: "Missing <h1> tag (0 found)" } if h1_list.empty?
-      issues << { level: :warn, type: :headings, message: "Multiple <h1> tags (#{h1_list.size} found)" } if h1_list.size > 1
+      if heading_audit[:violations] && !heading_audit[:violations].empty?
+        heading_audit[:violations].each do |v|
+          lvl = case v[:severity]
+                when :critical then :error
+                when :warning then :warn
+                else :info
+                end
+          issues << { level: lvl, type: :headings, message: v[:message] }
+        end
+      else
+        issues << { level: :error, type: :headings, message: "Missing <h1> tag (0 found)" } if h1_list.empty?
+        issues << { level: :warn, type: :headings, message: "Multiple <h1> tags (#{h1_list.size} found)" } if h1_list.size > 1
+      end
       issues << { level: :warn, type: :images, message: "#{images_data[:missing_alt_count]} images missing alt tags" } if images_data[:missing_alt_count] > 0
       issues << { level: :critical, type: :indexability, message: "Robots noindex tag detected (Blocking Googlebot)" } if noindex
 
@@ -155,13 +185,23 @@ module GSC
           self_referencing: canonical_url ? (canonical_url.chomp('/') == @url.chomp('/')) : false
         },
         headings: {
-          count: headings.size,
-          h1_count: h1_list.size,
+          count: heading_audit[:count],
+          h1_count: heading_audit[:h1_count],
+          score: heading_audit[:score],
+          grade: heading_audit[:grade],
+          depth: heading_audit[:depth],
+          counts: heading_audit[:counts],
+          empty_count: heading_audit[:empty_count],
+          violations: heading_audit[:violations],
+          ascii_tree: heading_audit[:ascii_tree],
+          color_tree: heading_audit[:color_tree],
+          keyword_analysis: heading_audit[:keyword_analysis],
           list: headings
         },
         images: images_data,
         links: links_data,
         schema: schemas,
+        structured_data: { schemas: schemas },
         social: { og: og_data, twitter: twitter_data },
         stats: { word_count: word_count, reading_time_mins: reading_time_mins },
         issues: issues
