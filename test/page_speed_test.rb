@@ -64,6 +64,7 @@ class PageSpeedTest < Minitest::Test
     # CrUX Field telemetry
     assert_equal :url, data[:field_source]
     assert_equal 'FAST', data[:overall_category]
+    assert_equal 'PASSED', data[:cwv_assessment]
     assert_equal 1800, data[:field_data]['LARGEST_CONTENTFUL_PAINT_MS'][:percentile]
     assert_equal 'FAST', data[:field_data]['LARGEST_CONTENTFUL_PAINT_MS'][:category]
     assert_equal 120, data[:field_data]['INTERACTION_TO_NEXT_PAINT'][:percentile]
@@ -71,6 +72,30 @@ class PageSpeedTest < Minitest::Test
     # Opportunities
     assert_equal 1, data[:opportunities].size
     assert_equal 'Reduce unused JavaScript', data[:opportunities].first[:title]
+  end
+
+  def test_cwv_assessment_passed_when_ttfb_is_average
+    ps = GSC::PageSpeed.new('https://example.com')
+
+    sample_api_response = {
+      'lighthouseResult' => { 'categories' => {}, 'audits' => {} },
+      'loadingExperience' => {
+        'overall_category' => 'AVERAGE', # Google legacy API returns AVERAGE because TTFB is AVERAGE
+        'metrics' => {
+          'LARGEST_CONTENTFUL_PAINT_MS' => { 'percentile' => 1230, 'category' => 'FAST' },
+          'INTERACTION_TO_NEXT_PAINT' => { 'percentile' => 69, 'category' => 'FAST' },
+          'CUMULATIVE_LAYOUT_SHIFT_SCORE' => { 'percentile' => 0, 'category' => 'FAST' },
+          'FIRST_CONTENTFUL_PAINT_MS' => { 'percentile' => 1150, 'category' => 'FAST' },
+          'EXPERIMENTAL_TIME_TO_FIRST_BYTE' => { 'percentile' => 973, 'category' => 'AVERAGE' }
+        }
+      }
+    }
+
+    data = ps.send(:parse_response, sample_api_response)
+
+    # Core Web Vitals assessment evaluates only LCP, INP, and CLS
+    assert_equal 'AVERAGE', data[:overall_category]
+    assert_equal 'PASSED', data[:cwv_assessment]
   end
 
   def test_parse_response_with_origin_crux_fallback

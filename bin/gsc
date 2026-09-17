@@ -3,7 +3,7 @@
 
 # ==============================================================================
 # Google Search Console & Indexing API CLI Tool (Pure Ruby - Zero Gem Dependencies)
-# Standalone Single-File Distribution (Built from lib/gsc v2.2.3)
+# Standalone Single-File Distribution (Built from lib/gsc v2.2.4)
 # ==============================================================================
 
 require 'net/http'
@@ -20,7 +20,7 @@ require 'stringio'
 
 # --- version.rb ---
 module GSC
-  VERSION = '2.2.3'
+  VERSION = '2.2.4'
 end
 
 # --- color.rb ---
@@ -3174,6 +3174,29 @@ module GSC
 
       overall_category = data.dig('loadingExperience', 'overall_category') || data.dig('originLoadingExperience', 'overall_category')
 
+      # Official Google Core Web Vitals Assessment evaluates ONLY the 3 Core Web Vitals:
+      # LCP, INP (or legacy FID), and CLS. (FCP and TTFB are diagnostic metrics).
+      # - PASSED: All present CWV metrics are 'FAST' (Good).
+      # - POOR: Any CWV metric is 'SLOW' (Poor).
+      # - NEEDS IMPROVEMENT: No CWV metric is 'SLOW', but at least one is 'AVERAGE'.
+      cwv_keys = ['LARGEST_CONTENTFUL_PAINT_MS', 'INTERACTION_TO_NEXT_PAINT', 'CUMULATIVE_LAYOUT_SHIFT_SCORE']
+      cwv_keys[1] = 'FIRST_INPUT_DELAY_MS' if !crux_metrics.key?('INTERACTION_TO_NEXT_PAINT') && crux_metrics.key?('FIRST_INPUT_DELAY_MS')
+
+      active_cwv = cwv_keys.map { |k| crux_metrics[k] }.compact
+      cwv_assessment = if active_cwv.any?
+        if active_cwv.any? { |m| m[:category] == 'SLOW' }
+          'POOR'
+        elsif active_cwv.any? { |m| m[:category] == 'AVERAGE' }
+          'NEEDS IMPROVEMENT'
+        elsif active_cwv.all? { |m| m[:category] == 'FAST' }
+          'PASSED'
+        else
+          overall_category
+        end
+      else
+        overall_category
+      end
+
       # Opportunities
       opportunities = []
       audits.each do |k, v|
@@ -3205,6 +3228,7 @@ module GSC
         field_data: crux_metrics,
         field_source: crux_source,
         overall_category: overall_category,
+        cwv_assessment: cwv_assessment,
         opportunities: opportunities.first(5)
       }
     end
@@ -22857,10 +22881,19 @@ module GSC
         fd = data[:field_data] || {}
         if fd.any?
           source_label = data[:field_source] == :origin ? "Domain-Wide Origin RUM" : "URL-Level RUM"
-          overall = data[:overall_category] || "UNKNOWN"
-          overall_col = overall == 'FAST' ? Color::GREEN : (overall == 'AVERAGE' ? Color::YELLOW : Color::RED)
+          assessment = data[:cwv_assessment] || data[:overall_category] || "UNKNOWN"
+          assessment_badge = case assessment
+          when 'PASSED', 'FAST'
+            Color.c("PASSED (All 3 Metrics Good)", Color::GREEN, Color::BOLD)
+          when 'NEEDS IMPROVEMENT', 'AVERAGE'
+            Color.c("NEEDS IMPROVEMENT", Color::YELLOW, Color::BOLD)
+          when 'POOR', 'SLOW', 'FAILED'
+            Color.c("FAILED (Poor Metrics Detected)", Color::RED, Color::BOLD)
+          else
+            Color.c(assessment, Color::YELLOW, Color::BOLD)
+          end
           puts "\n#{Color::BOLD}🌐 CrUX FIELD DATA (28-Day Real User Monitoring - #{source_label}):#{Color::RESET}"
-          puts "   • Core Web Vitals Status        : #{Color.c(overall, overall_col, Color::BOLD)}"
+          puts "   • Core Web Vitals Assessment    : #{assessment_badge}"
 
           if fd['LARGEST_CONTENTFUL_PAINT_MS']
             val = "#{(fd['LARGEST_CONTENTFUL_PAINT_MS'][:percentile].to_f / 1000).round(2)} s"
@@ -30016,10 +30049,19 @@ module GSC
       fd = data[:field_data] || {}
       if fd.any?
         source_label = data[:field_source] == :origin ? "Domain-Wide Origin RUM" : "URL-Level RUM"
-        overall = data[:overall_category] || "UNKNOWN"
-        overall_col = overall == 'FAST' ? Color::GREEN : (overall == 'AVERAGE' ? Color::YELLOW : Color::RED)
+        assessment = data[:cwv_assessment] || data[:overall_category] || "UNKNOWN"
+        assessment_badge = case assessment
+        when 'PASSED', 'FAST'
+          Color.c("PASSED (All 3 Metrics Good)", Color::GREEN, Color::BOLD)
+        when 'NEEDS IMPROVEMENT', 'AVERAGE'
+          Color.c("NEEDS IMPROVEMENT", Color::YELLOW, Color::BOLD)
+        when 'POOR', 'SLOW', 'FAILED'
+          Color.c("FAILED (Poor Metrics Detected)", Color::RED, Color::BOLD)
+        else
+          Color.c(assessment, Color::YELLOW, Color::BOLD)
+        end
         puts "\n#{Color::BOLD}🌐 CrUX FIELD DATA (28-Day Real User Monitoring - #{source_label}):#{Color::RESET}"
-        puts "   • Core Web Vitals Status        : #{Color.c(overall, overall_col, Color::BOLD)}"
+        puts "   • Core Web Vitals Assessment    : #{assessment_badge}"
 
         if fd['LARGEST_CONTENTFUL_PAINT_MS']
           val = "#{(fd['LARGEST_CONTENTFUL_PAINT_MS'][:percentile].to_f / 1000).round(2)} s"

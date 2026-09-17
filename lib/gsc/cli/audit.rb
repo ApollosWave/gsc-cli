@@ -170,10 +170,19 @@ module GSC
         fd = data[:field_data] || {}
         if fd.any?
           source_label = data[:field_source] == :origin ? "Domain-Wide Origin RUM" : "URL-Level RUM"
-          overall = data[:overall_category] || "UNKNOWN"
-          overall_col = overall == 'FAST' ? Color::GREEN : (overall == 'AVERAGE' ? Color::YELLOW : Color::RED)
+          assessment = data[:cwv_assessment] || data[:overall_category] || "UNKNOWN"
+          assessment_badge = case assessment
+          when 'PASSED', 'FAST'
+            Color.c("PASSED (All 3 Metrics Good)", Color::GREEN, Color::BOLD)
+          when 'NEEDS IMPROVEMENT', 'AVERAGE'
+            Color.c("NEEDS IMPROVEMENT", Color::YELLOW, Color::BOLD)
+          when 'POOR', 'SLOW', 'FAILED'
+            Color.c("FAILED (Poor Metrics Detected)", Color::RED, Color::BOLD)
+          else
+            Color.c(assessment, Color::YELLOW, Color::BOLD)
+          end
           puts "\n#{Color::BOLD}🌐 CrUX FIELD DATA (28-Day Real User Monitoring - #{source_label}):#{Color::RESET}"
-          puts "   • Core Web Vitals Status        : #{Color.c(overall, overall_col, Color::BOLD)}"
+          puts "   • Core Web Vitals Assessment    : #{assessment_badge}"
 
           if fd['LARGEST_CONTENTFUL_PAINT_MS']
             val = "#{(fd['LARGEST_CONTENTFUL_PAINT_MS'][:percentile].to_f / 1000).round(2)} s"

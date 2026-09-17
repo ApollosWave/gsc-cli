@@ -86,6 +86,29 @@ module GSC
 
       overall_category = data.dig('loadingExperience', 'overall_category') || data.dig('originLoadingExperience', 'overall_category')
 
+      # Official Google Core Web Vitals Assessment evaluates ONLY the 3 Core Web Vitals:
+      # LCP, INP (or legacy FID), and CLS. (FCP and TTFB are diagnostic metrics).
+      # - PASSED: All present CWV metrics are 'FAST' (Good).
+      # - POOR: Any CWV metric is 'SLOW' (Poor).
+      # - NEEDS IMPROVEMENT: No CWV metric is 'SLOW', but at least one is 'AVERAGE'.
+      cwv_keys = ['LARGEST_CONTENTFUL_PAINT_MS', 'INTERACTION_TO_NEXT_PAINT', 'CUMULATIVE_LAYOUT_SHIFT_SCORE']
+      cwv_keys[1] = 'FIRST_INPUT_DELAY_MS' if !crux_metrics.key?('INTERACTION_TO_NEXT_PAINT') && crux_metrics.key?('FIRST_INPUT_DELAY_MS')
+
+      active_cwv = cwv_keys.map { |k| crux_metrics[k] }.compact
+      cwv_assessment = if active_cwv.any?
+        if active_cwv.any? { |m| m[:category] == 'SLOW' }
+          'POOR'
+        elsif active_cwv.any? { |m| m[:category] == 'AVERAGE' }
+          'NEEDS IMPROVEMENT'
+        elsif active_cwv.all? { |m| m[:category] == 'FAST' }
+          'PASSED'
+        else
+          overall_category
+        end
+      else
+        overall_category
+      end
+
       # Opportunities
       opportunities = []
       audits.each do |k, v|
@@ -117,6 +140,7 @@ module GSC
         field_data: crux_metrics,
         field_source: crux_source,
         overall_category: overall_category,
+        cwv_assessment: cwv_assessment,
         opportunities: opportunities.first(5)
       }
     end
