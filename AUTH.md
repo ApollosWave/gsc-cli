@@ -96,23 +96,45 @@ export GA4_PROPERTY_ID=123456789
 
 Audit official mobile and desktop Lighthouse scores and 75th percentile Chrome User Experience Report (CrUX) metrics (LCP, INP, CLS, FCP, TTFB).
 
-### Unauthenticated Mode (Default)
-`gsc speed` works immediately with **zero configuration** for normal development auditing:
-```bash
-gsc speed https://example.com
-```
+> 💡 **Why an API Key is Recommended:**  
+> While Google technically permits unauthenticated queries, Google's public unauthenticated IP pool frequently hits `429 Quota Exceeded (RESOURCE_EXHAUSTED)`. Generating a personal API key in Google Cloud gives you **25,000 queries per day at $0 cost**.
 
-### High-Throughput Mode (Optional Free API Key)
-If you run high-frequency batch audits in CI/CD pipelines (up to 25,000 queries/day free):
-1. In Google Cloud Console, enable **PageSpeed Insights API**.
-2. Go to **APIs & Services > Credentials** > **Create Credentials** > **API Key**.
-3. Save the key:
-```bash
-gsc config set pagespeed_api_key AIzaSyYourKeyHere
+### 1-Minute API Key Setup
 
-# Or pass as environment variable
-export PAGESPEED_API_KEY=AIzaSyYourKeyHere
-```
+1. **Enable the API:**
+   * Open [Google Cloud Console: PageSpeed Insights API](https://console.cloud.google.com/apis/library/pagespeedonline.googleapis.com).
+   * Ensure your active project is selected in the top bar.
+   * Click **Enable** (if not already enabled, Google will return a `403 SERVICE_DISABLED` error).
+
+2. **Create the API Key:**
+   * In the left sidebar, navigate to **APIs & Services > Credentials**.
+   * Click **+ Create Credentials** at the top → select **API Key**.
+   * In the side panel:
+     * **Name:** `gsc-pagespeed-key` (or default `API key 1`).
+     * **Application restrictions:** Keep **None** (since `gsc` is a local command-line tool).
+     * **API restrictions:** (Optional) Select **Restrict key** → check **PageSpeed Insights API**.
+     * Click the blue **Create** button.
+   * Copy the generated key (`AIzaSy...`).
+
+3. **Save Your Key:**
+   ```bash
+   gsc config set pagespeed_api_key AIzaSyYourKeyHere
+
+   # Or pass as environment variable
+   export PAGESPEED_API_KEY=AIzaSyYourKeyHere
+   ```
+
+4. **Run Speed Audits:**
+   ```bash
+   # Mobile Core Web Vitals (Default)
+   gsc speed https://example.com
+
+   # Desktop Core Web Vitals
+   gsc speed https://example.com --strategy desktop
+
+   # Correlate CWV with Google Search Console traffic
+   gsc speed-correlate https://example.com
+   ```
 
 ---
 
