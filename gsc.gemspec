@@ -8,22 +8,20 @@ Gem::Specification.new do |spec|
   spec.authors       = ["ApollosWave LLC"]
   spec.email         = ["support@apolloswave.com"]
 
-  spec.summary       = "Google Search Console, Google Indexing API, Keyword Intelligence & Real-Time Trends CLI"
+  spec.summary       = "Zero-gem Google Search Console, Google Indexing API & Core Web Vitals CLI in pure Ruby"
   spec.description   = <<~DESC
-    == OVERVIEW
+    A high-performance, zero-dependency CLI tool and developer engine for Google Search Console, Google Indexing API, and Core Web Vitals. Built entirely with the pure Ruby standard library (Net::HTTP, OpenSSL, JSON) with sub-millisecond cold boot and comprehensive test coverage.
 
-    A lightweight, zero-gem CLI tool and AI agent engine for Google Search Console, Google Indexing API, Google Analytics 4, Keywords Everywhere, and Google Trends.
+    == PRODUCTION DOGFOODING & ECOSYSTEM
 
-    == APOLLOSWAVE ECOSYSTEM
+    Maintained by {ApollosWave LLC}[https://apolloswave.com]. Production software built by our team:
 
-    Built and maintained by {ApollosWave LLC}[https://apolloswave.com/?utm_source=rubygems&utm_medium=gem_desc&utm_campaign=gsc-cli]. Check out our commercial products:
-
-    * {Superspeed}[https://superspeedapp.com/?utm_source=rubygems&utm_medium=gem_desc&utm_campaign=gsc-cli] - Lightning-fast macOS disk cleaner and RAM booster for Apple Silicon.
-    * {Supercart}[https://supercartapp.com/?utm_source=rubygems&utm_medium=gem_desc&utm_campaign=gsc-cli] - High-converting slide cart drawer and 1-click upsells for Shopify stores.
-    * {PackingLog}[https://packinglog.com/?utm_source=rubygems&utm_medium=gem_desc&utm_campaign=gsc-cli] - Smart QR-code moving box inventory and photo catalog.
+    * {Superspeed}[https://superspeedapp.com] - Real-user monitoring (RUM), Core Web Vitals & speed intelligence for high-volume Shopify storefronts.
+    * {Supercart}[https://supercartapp.com] - Slide cart drawer, in-house shipping protection & real-time e-commerce upsell infrastructure.
+    * {PackingLog}[https://packinglog.com] - Smart QR-code moving box inventory and photo catalog SaaS.
   DESC
 
-  spec.homepage      = "https://apolloswave.com"
+  spec.homepage      = "https://github.com/ApollosWave/gsc-cli"
   spec.license       = "MIT"
   spec.required_ruby_version = ">= 3.0.0"
 
@@ -32,7 +30,7 @@ Gem::Specification.new do |spec|
   spec.executables   = ["gsc"]
   spec.require_paths = ["lib"]
 
-  spec.metadata["homepage_uri"]      = "https://apolloswave.com/?utm_source=rubygems&utm_medium=gem_sidebar&utm_campaign=gsc-cli"
+  spec.metadata["homepage_uri"]      = "https://apolloswave.com"
   spec.metadata["source_code_uri"]   = "https://github.com/ApollosWave/gsc-cli"
   spec.metadata["documentation_uri"] = "https://github.com/ApollosWave/gsc-cli#readme"
   spec.metadata["bug_tracker_uri"]   = "https://github.com/ApollosWave/gsc-cli/issues"

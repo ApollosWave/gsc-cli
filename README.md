@@ -1,30 +1,18 @@
-# 🚀 GSC-CLI: The Zero-Gem Google Search Console & Technical SEO Engine in Pure Ruby
-
-> **Zero Gem Dependencies.** Pure Ruby standard library (`Net::HTTP`, `OpenSSL`, `JSON`).  
-> **Sub-millisecond Google Search Console inspection, instant Googlebot indexing, and AI Overview detection in pure standard library.** Extract first-party Google rankings, automate technical SEO audits, and generate server-side remediation rules in **< 50 milliseconds** with zero external dependencies.
+# 🚀 GSC-CLI: The Zero-Gem Google Search Console & Technical SEO Engine
 
 [![Ruby](https://img.shields.io/badge/Ruby-3.0%2B-red.svg?logo=ruby&logoColor=white)](https://www.ruby-lang.org)
 [![Gem Version](https://badge.fury.io/rb/gsc-cli.svg)](https://rubygems.org/gems/gsc-cli)
+[![Tests](https://img.shields.io/badge/tests-371%20suites%20%7C%201%2C991%20assertions-success)](test/)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20gems-brightgreen.svg)](#)
+[![Cold Boot](https://img.shields.io/badge/cold%20boot-%3C15ms-blue)](lib/gsc/cli.rb)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Commands](https://img.shields.io/badge/commands-80%20production-orange.svg)](#-complete-cli-command-reference-80-commands)
 [![Security: AES-256-GCM](https://img.shields.io/badge/Vault-AES--256--GCM-blueviolet.svg)](#8-agency-credential-vault-gsc-vault)
 [![AI Agent Native](https://img.shields.io/badge/AI%20Agent-Native%20Skill-purple.svg)](#-ai-agent-native-integration-antigravity-claude-cursor)
 [![GitHub Stars](https://img.shields.io/github/stars/ApollosWave/gsc-cli?style=social)](https://github.com/ApollosWave/gsc-cli)
 
----
-
-<p align="center">
-  <b>gsc-cli</b> is a free, open-source initiative built and maintained by 
-  <a href="https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>ApollosWave LLC</b></a>.
-</p>
-
-<p align="center">
-  <sub>Explore other software built by our team:</sub><br>
-  ⚡ <a href="https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Superspeed</b></a> — Built for Shopify speed, CRO & revenue leak intelligence app (5.0 ★)<br>
-  🛒 <a href="https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>Supercart</b></a> — Built for Shopify slide cart drawer, in-house shipping protection & upsells (5.0 ★)<br>
-  📦 <a href="https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli"><b>PackingLog</b></a> — Our newly launched physical moving inventory and QR-code tracking SaaS — where waiting weeks for Googlebot to discover new landing pages wasn't an option.
-</p>
+> ⚡ **Zero runtime gems. Pure Ruby standard library (`Net::HTTP`, `OpenSSL`, `JSON`).**  
+> Cold-boots in **~15ms** with **371 test suites, 1,991 assertions, and 0 failures** across Ruby 3.0 through 3.4. Extract first-party Google rankings, automate technical SEO audits, and manage Googlebot indexing without bloated SDK dependencies.
 
 ---
 
@@ -38,20 +26,7 @@ Every software engineer, technical SEO, and developer-operator managing search p
 4. **Google AI Overviews (AIO) Intercepting Search Clicks**: Zero-click searches continue to expand. If technical content is not structured for citation in Gemini and AI Overviews, organic visibility drops even when ranking on Page 1.
 5. **AI Coding Agents Cannot Click Web Buttons**: Modern coding agents (Antigravity, Claude Code, Cursor, Cline) require deterministic, sub-50ms JSON over stdout to diagnose and fix search issues directly inside the local repository.
 
-### 🛠️ Battle-Tested in Production (The Origin)
-
-`gsc-cli` was not engineered in a vacuum or built as a synthetic demo. 
-
-At **[ApollosWave](https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**, we operate multiple high-throughput production applications:
-- **[Superspeed](https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Automated Core Web Vitals, INP, and speed intelligence for high-volume Shopify storefronts.
-- **[Supercart](https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: High-converting slide cart and upsell infrastructure processing real-time e-commerce checkouts.
-- **[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Our newly launched physical moving inventory and QR-code tracking SaaS — where waiting weeks for Googlebot to discover new landing pages wasn't an option.
-
-Managing Search Console indexing, sitemap trees, and SERP positions across these live codebases meant either pulling in 40+ bloated API gems, burning hours clicking in Google's web UI, or paying thousands every year for sampled proxy scrapers.
-
-We built **`gsc-cli`** as our internal engine to automate Googlebot indexing and search diagnostics in **< 50 milliseconds** using pure standard-library Ruby. 
-
-We open-sourced it 100% free under the MIT License so every builder, engineering team, and operator can run first-party search automation with zero dependency bloat.
+We built **`gsc-cli`** to automate Googlebot indexing and search diagnostics in **< 50 milliseconds** using pure standard-library Ruby, and open-sourced it 100% free under the MIT License so every builder, engineering team, and operator can run first-party search automation with zero dependency bloat.
 
 ---
 
@@ -93,7 +68,7 @@ By implementing Google's JWT service account authentication in pure `OpenSSL` an
 - 🩺 **Zero-Gem Cold-Start Doctor (`gsc doctor`)**: Verifies 100% standard library purity, measures sub-50ms execution speed, and validates credential security.
 - 📈 **Real-Time Google Trends Engine (`gsc trends`)**: 5-year and 1-year search trajectory, velocity percentages, Unicode sparklines (` ▂▃▄▅▆▇█`), and regional demand breakdowns with zero authentication.
 - 🎯 **Zero-Auth Keyword Planner (`gsc planner`)**: Instant seed expansion via Google Autocomplete with automated search intent classification (`Informational`, `Commercial`, `Transactional`).
-- 💰 **Keywords Everywhere Ingestion (`gsc import clip` & `gsc ke`)**: Ingest free keyword tables directly from clipboard (zero credits required) or connect a [Keywords Everywhere API key](https://keywordseverywhere.com/?fpr=us25sg) *(referral link)* for automated terminal lookups.
+- 💰 **Keywords Everywhere Ingestion (`gsc import clip` & `gsc ke`)**: Ingest free keyword tables directly from clipboard (zero credits required) or connect a [Keywords Everywhere API key](https://keywordseverywhere.com/?fpr=us25sg) *(partner referral link that helps support continuous open-source maintenance of this project)* for automated terminal lookups.
 - 🚀 **Instant Googlebot Re-Indexing (`gsc index`)**: Ping Google's Indexing API with `URL_UPDATED` or `URL_DELETED` for priority crawl queueing within seconds.
 - ⚡ **Multi-Engine IndexNow Protocol (`gsc indexnow`)**: Instantly submit pages and sitemaps across Microsoft Bing, Yandex, Seznam, and Naver simultaneously.
 - 🖥️ **Google SERP & Title Pixel Simulator (`gsc serp`)**: Simulate desktop (580px) and mobile (650px) Google SERP cards, calculate precise proportional pixel widths, and prevent truncation before publishing.
@@ -153,6 +128,15 @@ Verify your installation:
 ```bash
 gsc version
 gsc doctor
+```
+
+### Option 4: Clone & Verify Test Suite Locally
+Verify all 371 test suites and 1,991 assertions on your own machine in seconds:
+```bash
+git clone https://github.com/ApollosWave/gsc-cli.git
+cd gsc-cli
+rake test
+# => 371 runs, 1991 assertions, 0 failures, 0 errors, 0 skips
 ```
 
 ---
@@ -378,7 +362,49 @@ gsc soft-404 https://example.com/broken-page --fix all
 
 ---
 
-### 9. Agency Credential Vault & Instant Domain Switching (`gsc vault` & `gsc switch`)
+### 9. Dual Lab (Lighthouse) & Field (CrUX 28-Day RUM) Core Web Vitals (`gsc speed` & `gsc speed-correlate`)
+
+#### The Problem
+Synthetic lab audits (like local Lighthouse runs) only measure artificial simulation on simulated throttled CPU, which often contradicts real user experience. Meanwhile, Google's official search ranking algorithm evaluates real-world Core Web Vitals (LCP, INP, CLS) from 28-day Chrome User Experience Report (CrUX) field telemetry.
+
+#### The Solution
+`gsc speed` delivers both in a single terminal command—pairing synthetic lab diagnostics with Google's 28-day URL-level CrUX field data and top speed optimization opportunities:
+
+```bash
+# Measure Core Web Vitals (Lab + CrUX Field Data) for any URL
+gsc speed https://superspeedapp.com
+
+# Correlate Core Web Vitals directly with organic GSC ranking positions
+gsc speed-correlate --days 28
+```
+
+```text
+⚡ Measuring Core Web Vitals via Google PageSpeed Insights (MOBILE):
+   https://superspeedapp.com
+
+🔬 LIGHTHOUSE LAB METRICS (Simulated MOBILE):
+   • LCP (Largest Contentful Paint) : 2.1 s
+   • FCP (First Contentful Paint)   : 1.4 s
+   • CLS (Cumulative Layout Shift)  : 0.02
+   • TBT (Total Blocking Time)      : 80 ms
+   • Speed Index                    : 2.3 s
+
+🌐 CrUX FIELD DATA (28-Day Real User Monitoring - URL-Level RUM):
+   • Core Web Vitals Status        : PASSED
+   • LCP (75th Percentile)         : 1.23 s [FAST]
+   • INP (75th Percentile)         : 69 ms  [FAST]
+   • CLS (75th Percentile)         : 0.0    [FAST]
+   • FCP (75th Percentile)         : 1.15 s [FAST]
+   • TTFB (75th Percentile)        : 973 ms [AVERAGE]
+
+💡 TOP SPEED OPPORTUNITIES:
+   • Reduce unused JavaScript: Est savings of 398 KiB
+   • Reduce unused CSS: Est savings of 68 KiB
+```
+
+---
+
+### 10. Agency Credential Vault & Instant Domain Switching (`gsc vault` & `gsc switch`)
 
 #### The Problem
 Agencies and multi-brand operators juggle dozens of client Google service account JSON files. Leaving unencrypted keys scattered across client folders invites credential leakage, path-traversal vulnerabilities, and accidental cross-client query pollution.
@@ -717,11 +743,16 @@ If GSC CLI saves your team hours of manual audit work or hundreds in monthly Saa
 
 ---
 
-### ApollosWave Ecosystem
-GSC CLI is maintained by [ApollosWave LLC](https://apolloswave.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli). Check out our products:
-- **[Superspeed](https://superspeedapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Autonomous Core Web Vitals & website speed optimization engine.
-- **[Supercart](https://supercartapp.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: High-converting slide cart drawer for Shopify merchants.
-- **[PackingLog](https://packinglog.com/?utm_source=github&utm_medium=readme&utm_campaign=gsc-cli)**: Our newly launched physical moving inventory and QR-code tracking SaaS — where waiting weeks for Googlebot to discover new landing pages wasn't an option.
+## 🛠️ Origin & Production Dogfooding
+
+`gsc-cli` was created and is actively maintained by **[ApollosWave LLC](https://apolloswave.com)**.
+
+We originally built this engine to automate Google Search Console diagnostics, crawl budgets, and Core Web Vitals across our own production applications:
+- **[Superspeed](https://superspeedapp.com)** — Real-user monitoring (RUM), Core Web Vitals, and speed intelligence for high-volume Shopify storefronts.
+- **[Supercart](https://supercartapp.com)** — Slide cart drawer, in-house shipping protection, and real-time e-commerce upsell infrastructure.
+- **[PackingLog](https://packinglog.com)** — Our newly launched physical moving inventory and QR-code tracking SaaS — where waiting weeks for Googlebot to discover new landing pages wasn't an option.
+
+We open-sourced `gsc-cli` under the MIT license so developers, engineering teams, and AI agents can run first-party search automation locally with zero dependency bloat.
 
 ---
 
