@@ -1,7 +1,7 @@
 # 🚀 GSC-CLI: The Zero-Gem Google Search Console & Technical SEO Engine
 
 [![Ruby](https://img.shields.io/badge/Ruby-3.0%2B-red.svg?logo=ruby&logoColor=white)](https://www.ruby-lang.org)
-[![Gem Version](https://badge.fury.io/rb/gsc-cli.svg)](https://rubygems.org/gems/gsc-cli)
+[![Gem Version](https://img.shields.io/gem/v/gsc-cli.svg?label=Gem%20Version&logo=rubygems)](https://rubygems.org/gems/gsc-cli)
 [![Tests](https://img.shields.io/badge/tests-371%20suites%20%7C%201%2C991%20assertions-success)](test/)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20gems-brightgreen.svg)](#)
 [![Cold Boot](https://img.shields.io/badge/cold%20boot-%3C15ms-blue)](lib/gsc/cli.rb)
