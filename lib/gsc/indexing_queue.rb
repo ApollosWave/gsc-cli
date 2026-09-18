@@ -8,13 +8,16 @@ require 'time'
 module GSC
   class IndexingQueue
     QUEUE_FILE = File.join(Config::CONFIG_DIR, 'indexing_queue.json')
+    BACKUPS_DIR = File.join(Config::CONFIG_DIR, 'backups')
     DAILY_LIMIT = 200
 
-    attr_reader :state
+    attr_reader :state, :file_path, :backup_dir
 
-    def initialize(file_path = QUEUE_FILE)
+    def initialize(file_path = QUEUE_FILE, backup_dir: nil)
       @file_path = file_path
+      @backup_dir = backup_dir || File.join(File.dirname(@file_path), 'backups')
       @state = load_state
+      Config.ensure_gsc_symlink!
     end
 
     def add_urls(urls)
@@ -46,7 +49,41 @@ module GSC
       }
     end
 
-    def clear(scope = :all)
+    def backup(scope = :all)
+      pending = @state['pending'] || []
+      submitted = @state['submitted'] || []
+      failed = @state['failed'] || []
+
+      # Nothing to backup if completely empty
+      return nil if pending.empty? && submitted.empty? && failed.empty?
+
+      FileUtils.mkdir_p(@backup_dir)
+      timestamp = Time.now.utc.strftime('%Y%m%d_%H%M%S')
+      backup_file = File.join(@backup_dir, "queue_backup_#{timestamp}.json")
+      if File.exist?(backup_file)
+        backup_file = File.join(@backup_dir, "queue_backup_#{timestamp}_#{Time.now.to_f.to_s.split('.').last}.json")
+      end
+
+      snapshot = {
+        'timestamp' => Time.now.utc.iso8601,
+        'cleared_scope' => scope.to_s,
+        'count' => pending.size,
+        'pending' => pending,
+        'submitted' => submitted,
+        'failed' => failed,
+        'daily_quota_used' => @state['daily_quota_used'] || 0,
+        'last_reset_date' => @state['last_reset_date']
+      }
+
+      File.write(backup_file, JSON.pretty_generate(snapshot))
+      backup_file
+    end
+
+    def clear(scope = :all, backup: true)
+      pending = @state['pending'] || []
+      count = pending.size
+      backup_file = backup ? backup(scope) : nil
+
       if scope == :pending
         @state['pending'] = []
       else
@@ -55,6 +92,8 @@ module GSC
         @state['failed'] = []
       end
       save_state
+
+      { count: count, backup_file: backup_file }
     end
 
     def process_batch(api, batch_size: 50, dry_run: false, delay_sec: 0.15)

@@ -81,7 +81,21 @@ class IndexingQueueTest < Minitest::Test
     @queue.add_urls(['https://example.com/p1'])
     assert_equal 1, @queue.status[:pending_count]
 
-    @queue.clear
+    res = @queue.clear
     assert_equal 0, @queue.status[:pending_count]
+    assert_equal 1, res[:count]
+    assert res[:backup_file]
+    assert File.exist?(res[:backup_file])
+
+    backup_data = JSON.parse(File.read(res[:backup_file]))
+    assert_equal 1, backup_data['count']
+    assert_equal ['https://example.com/p1'], backup_data['pending']
+    assert backup_data['timestamp']
+  end
+
+  def test_clear_empty_queue_does_not_create_backup
+    assert_equal 0, @queue.status[:pending_count]
+    res = @queue.clear
+    assert_nil res[:backup_file]
   end
 end

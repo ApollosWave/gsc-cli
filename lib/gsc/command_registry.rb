@@ -58,7 +58,7 @@ COMMAND_REGISTRY = [
     commands: [
       { name: "inspect <url>", shortcut: nil, desc: "Live Google index check (coverage, canonical, date, robots.txt)", flags: ["-d"] },
       { name: "index <url>", shortcut: nil, desc: "Notify Googlebot to crawl/index URL immediately (URL_UPDATED)", flags: ["--dry-run"] },
-      { name: "index-batch [action]", shortcut: "ib", desc: "Automated 200 URL/day quota queue manager (add, run, status, clear)", flags: ["--batch-size", "--dry-run", "--json"] },
+      { name: "index-batch [action]", shortcut: "ib", desc: "Automated 200 URL/day quota queue manager (add, run, status, clear)", flags: ["--batch-size", "--dry-run", "--force", "--json"] },
       { name: "remove <url>", shortcut: nil, desc: "Notify Googlebot a page has been deleted (URL_DELETED)", flags: ["--dry-run"] },
       { name: "status <url>", shortcut: nil, desc: "Check Google Indexing API notification metadata", flags: [] },
       { name: "sitemaps-list", shortcut: nil, desc: "List registered XML sitemaps in Search Console", flags: ["-d"] },

@@ -226,11 +226,54 @@ module GSC
           end
 
         when 'clear', 'reset'
-          queue.clear(:all)
+          count = (queue.state['pending'] || []).size
+          if count == 0
+            if options[:json]
+              puts JSON.pretty_generate({ ok: true, message: 'Batch queue is already empty.', count: 0 })
+            else
+              puts "Batch queue is already empty."
+            end
+            return
+          end
+
+          unless options[:force]
+            if $stdin.tty?
+              $stdout.print "Are you sure you want to clear #{count} pending URLs from the batch queue? [y/N]: "
+              $stdout.flush
+              ans = $stdin.gets.to_s.strip.downcase
+              unless ans == 'y' || ans == 'yes'
+                if options[:json]
+                  puts JSON.pretty_generate({ ok: false, message: 'Clear aborted. Queue preserved.' })
+                else
+                  puts "Clear aborted. Queue preserved."
+                end
+                return
+              end
+            else
+              error_msg = "Error: 'gsc index-batch clear' requires '--force' in non-interactive environments to prevent accidental queue loss."
+              if options[:json]
+                puts JSON.pretty_generate({ error: error_msg })
+              else
+                puts error_msg
+              end
+              exit 1
+            end
+          end
+
+          res = queue.clear(:all, backup: true)
+          backup_path = res[:backup_file]
+          display_backup = backup_path ? backup_path.sub(/^#{Regexp.escape(Dir.home)}\/\.config\/gsc/, '~/.gsc').sub(/^#{Regexp.escape(Dir.home)}/, '~') : 'none'
+          cleared_count = res[:count] || count
+
           if options[:json]
-            puts JSON.pretty_generate({ ok: true, message: 'Queue cleared' })
+            puts JSON.pretty_generate({
+              ok: true,
+              message: "Queue cleared (#{cleared_count} items). Backup saved to #{display_backup}",
+              cleared_count: cleared_count,
+              backup_file: backup_path
+            })
           else
-            puts Color.c("🗑️  Indexing queue cleared.", Color::GREEN)
+            puts "Queue cleared (#{cleared_count} items). Backup saved to #{display_backup}"
           end
 
         else
@@ -248,7 +291,13 @@ module GSC
             puts "\nCommands:"
             puts "   • #{Color.c('gsc index-batch add <url|sitemap.xml|file.txt>', Color::CYAN)} - Enqueue URLs"
             puts "   • #{Color.c('gsc index-batch run [--batch-size 50] [--dry-run]', Color::CYAN)} - Process queue"
-            puts "   • #{Color.c('gsc index-batch clear', Color::CYAN)}                           - Reset queue"
+            puts "   • #{Color.c('gsc index-batch clear [--force]', Color::CYAN)}                   - Reset queue (safe wipe)"
+            puts ""
+            puts "🛡️  #{Color::BOLD}Queue Safety Guard:#{Color::RESET}"
+            puts "   • Prevents accidental queue loss from scripts, cron, or AI agents"
+            puts "   • Interactive: Prompts for confirmation [y/N] before clearing"
+            puts "   • Non-interactive / CI: Requires #{Color.c('--force', Color::YELLOW)} flag to proceed"
+            puts "   • Snapshot backup: Automatically saves a backup to ~/.gsc/backups/ before clearing"
             puts ""
           end
         end

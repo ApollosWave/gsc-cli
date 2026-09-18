@@ -3,7 +3,7 @@
 
 # ==============================================================================
 # Google Search Console & Indexing API CLI Tool (Pure Ruby - Zero Gem Dependencies)
-# Standalone Single-File Distribution (Built from lib/gsc v2.2.4)
+# Standalone Single-File Distribution (Built from lib/gsc v2.2.5)
 # ==============================================================================
 
 require 'net/http'
@@ -20,7 +20,7 @@ require 'stringio'
 
 # --- version.rb ---
 module GSC
-  VERSION = '2.2.4'
+  VERSION = '2.2.5'
 end
 
 # --- color.rb ---
@@ -70,7 +70,13 @@ module GSC
     CONFIG_DIR  = File.expand_path('~/.config/gsc')
     CONFIG_FILE = File.join(CONFIG_DIR, 'config.json')
 
-def self.get(key)
+    def self.ensure_gsc_symlink!
+      gsc_dir = File.expand_path('~/.gsc')
+      return if File.exist?(gsc_dir) || File.symlink?(gsc_dir)
+      File.symlink(CONFIG_DIR, gsc_dir) rescue nil
+    end
+
+    def self.get(key)
   load[key.to_s]
 end
 
@@ -5429,13 +5435,16 @@ require 'time'
 module GSC
   class IndexingQueue
     QUEUE_FILE = File.join(Config::CONFIG_DIR, 'indexing_queue.json')
+    BACKUPS_DIR = File.join(Config::CONFIG_DIR, 'backups')
     DAILY_LIMIT = 200
 
-    attr_reader :state
+    attr_reader :state, :file_path, :backup_dir
 
-    def initialize(file_path = QUEUE_FILE)
+    def initialize(file_path = QUEUE_FILE, backup_dir: nil)
       @file_path = file_path
+      @backup_dir = backup_dir || File.join(File.dirname(@file_path), 'backups')
       @state = load_state
+      Config.ensure_gsc_symlink!
     end
 
     def add_urls(urls)
@@ -5467,7 +5476,41 @@ module GSC
       }
     end
 
-    def clear(scope = :all)
+    def backup(scope = :all)
+      pending = @state['pending'] || []
+      submitted = @state['submitted'] || []
+      failed = @state['failed'] || []
+
+      # Nothing to backup if completely empty
+      return nil if pending.empty? && submitted.empty? && failed.empty?
+
+      FileUtils.mkdir_p(@backup_dir)
+      timestamp = Time.now.utc.strftime('%Y%m%d_%H%M%S')
+      backup_file = File.join(@backup_dir, "queue_backup_#{timestamp}.json")
+      if File.exist?(backup_file)
+        backup_file = File.join(@backup_dir, "queue_backup_#{timestamp}_#{Time.now.to_f.to_s.split('.').last}.json")
+      end
+
+      snapshot = {
+        'timestamp' => Time.now.utc.iso8601,
+        'cleared_scope' => scope.to_s,
+        'count' => pending.size,
+        'pending' => pending,
+        'submitted' => submitted,
+        'failed' => failed,
+        'daily_quota_used' => @state['daily_quota_used'] || 0,
+        'last_reset_date' => @state['last_reset_date']
+      }
+
+      File.write(backup_file, JSON.pretty_generate(snapshot))
+      backup_file
+    end
+
+    def clear(scope = :all, backup: true)
+      pending = @state['pending'] || []
+      count = pending.size
+      backup_file = backup ? backup(scope) : nil
+
       if scope == :pending
         @state['pending'] = []
       else
@@ -5476,6 +5519,8 @@ module GSC
         @state['failed'] = []
       end
       save_state
+
+      { count: count, backup_file: backup_file }
     end
 
     def process_batch(api, batch_size: 50, dry_run: false, delay_sec: 0.15)
@@ -9063,7 +9108,7 @@ COMMAND_REGISTRY = [
     commands: [
       { name: "inspect <url>", shortcut: nil, desc: "Live Google index check (coverage, canonical, date, robots.txt)", flags: ["-d"] },
       { name: "index <url>", shortcut: nil, desc: "Notify Googlebot to crawl/index URL immediately (URL_UPDATED)", flags: ["--dry-run"] },
-      { name: "index-batch [action]", shortcut: "ib", desc: "Automated 200 URL/day quota queue manager (add, run, status, clear)", flags: ["--batch-size", "--dry-run", "--json"] },
+      { name: "index-batch [action]", shortcut: "ib", desc: "Automated 200 URL/day quota queue manager (add, run, status, clear)", flags: ["--batch-size", "--dry-run", "--force", "--json"] },
       { name: "remove <url>", shortcut: nil, desc: "Notify Googlebot a page has been deleted (URL_DELETED)", flags: ["--dry-run"] },
       { name: "status <url>", shortcut: nil, desc: "Check Google Indexing API notification metadata", flags: [] },
       { name: "sitemaps-list", shortcut: nil, desc: "List registered XML sitemaps in Search Console", flags: ["-d"] },
@@ -21034,11 +21079,54 @@ module GSC
           end
 
         when 'clear', 'reset'
-          queue.clear(:all)
+          count = (queue.state['pending'] || []).size
+          if count == 0
+            if options[:json]
+              puts JSON.pretty_generate({ ok: true, message: 'Batch queue is already empty.', count: 0 })
+            else
+              puts "Batch queue is already empty."
+            end
+            return
+          end
+
+          unless options[:force]
+            if $stdin.tty?
+              $stdout.print "Are you sure you want to clear #{count} pending URLs from the batch queue? [y/N]: "
+              $stdout.flush
+              ans = $stdin.gets.to_s.strip.downcase
+              unless ans == 'y' || ans == 'yes'
+                if options[:json]
+                  puts JSON.pretty_generate({ ok: false, message: 'Clear aborted. Queue preserved.' })
+                else
+                  puts "Clear aborted. Queue preserved."
+                end
+                return
+              end
+            else
+              error_msg = "Error: 'gsc index-batch clear' requires '--force' in non-interactive environments to prevent accidental queue loss."
+              if options[:json]
+                puts JSON.pretty_generate({ error: error_msg })
+              else
+                puts error_msg
+              end
+              exit 1
+            end
+          end
+
+          res = queue.clear(:all, backup: true)
+          backup_path = res[:backup_file]
+          display_backup = backup_path ? backup_path.sub(/^#{Regexp.escape(Dir.home)}\/\.config\/gsc/, '~/.gsc').sub(/^#{Regexp.escape(Dir.home)}/, '~') : 'none'
+          cleared_count = res[:count] || count
+
           if options[:json]
-            puts JSON.pretty_generate({ ok: true, message: 'Queue cleared' })
+            puts JSON.pretty_generate({
+              ok: true,
+              message: "Queue cleared (#{cleared_count} items). Backup saved to #{display_backup}",
+              cleared_count: cleared_count,
+              backup_file: backup_path
+            })
           else
-            puts Color.c("🗑️  Indexing queue cleared.", Color::GREEN)
+            puts "Queue cleared (#{cleared_count} items). Backup saved to #{display_backup}"
           end
 
         else
@@ -21056,7 +21144,13 @@ module GSC
             puts "\nCommands:"
             puts "   • #{Color.c('gsc index-batch add <url|sitemap.xml|file.txt>', Color::CYAN)} - Enqueue URLs"
             puts "   • #{Color.c('gsc index-batch run [--batch-size 50] [--dry-run]', Color::CYAN)} - Process queue"
-            puts "   • #{Color.c('gsc index-batch clear', Color::CYAN)}                           - Reset queue"
+            puts "   • #{Color.c('gsc index-batch clear [--force]', Color::CYAN)}                   - Reset queue (safe wipe)"
+            puts ""
+            puts "🛡️  #{Color::BOLD}Queue Safety Guard:#{Color::RESET}"
+            puts "   • Prevents accidental queue loss from scripts, cron, or AI agents"
+            puts "   • Interactive: Prompts for confirmation [y/N] before clearing"
+            puts "   • Non-interactive / CI: Requires #{Color.c('--force', Color::YELLOW)} flag to proceed"
+            puts "   • Snapshot backup: Automatically saves a backup to ~/.gsc/backups/ before clearing"
             puts ""
           end
         end
@@ -31571,6 +31665,10 @@ module GSC
           options[:batch_size] = size
         end
 
+        opts.on('-f', '--force', '--yes', '-y', 'Bypass confirmation prompts (required for non-interactive queue clears)') do
+          options[:force] = true
+        end
+
         opts.on('--concurrency COUNT', Integer, 'Concurrent threads for multi-page site crawler (default: 5, max: 20)') do |c|
           options[:concurrency] = c
         end
@@ -32227,6 +32325,14 @@ module GSC
         Audit.run(command, target, extra, options)
         exit 0 unless options[:in_dashboard]
         return
+
+      when 'index-batch', 'queue', 'batch-index'
+        action = target.to_s.strip.downcase
+        if action != 'run' && action != 'process' && action != 'execute'
+          Indexing.run(command, target, extra, options, nil, nil, nil, nil)
+          exit 0 unless options[:in_dashboard]
+          return
+        end
       end
 
       # 7. Authenticated Commands (GSC / Indexing / Analytics / GA4)

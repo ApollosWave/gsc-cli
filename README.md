@@ -494,12 +494,18 @@ gsc use 2
 | `gsc index <url>` | — | Priority Googlebot crawl submission (`URL_UPDATED`) | `--dry-run`, `--json` |
 | `gsc remove <url>` | — | Notify Googlebot of permanently deleted URL (`URL_DELETED`) | `--dry-run`, `--json` |
 | `gsc status <url>` | — | Check Google Indexing API submission status and latest notification timestamp| `--json` |
-| `gsc index-batch` | — | Batch URL indexing processor with daily 200-URL quota tracking | `--run`, `--status`, `--json` |
+| `gsc index-batch` | — | Batch URL indexing processor with daily 200-URL quota tracking | `--batch-size`, `--force`, `--dry-run`, `--json` |
 | `gsc indexnow <url>` | — | Multi-engine instant submission (Bing, Yandex, Seznam, Naver) | `--key`, `--json` |
 | `gsc zombies <sitemap>` | — | Detect zero-impression deadweight URLs wasting crawl budget over 90 days | `--days`, `--json` |
 | `gsc sitemaps-list` | — | List registered XML sitemaps in Search Console | `--json` |
 | `gsc sitemaps-submit <url>`| — | Submit or re-submit an XML sitemap to Search Console | `--json` |
 | `gsc sitemap-tree <url>` | — | Visual sitemap hierarchy tree and URL limit validator | `--json` |
+
+> 🛡️ **Batch Indexing Safety Guard (`gsc index-batch clear`)**:  
+> When automating bulk indexing in scripts, CI/CD, or AI agents, an accidental `clear` could wipe hundreds of queued URLs waiting to be indexed. To prevent queue loss:
+> - **Interactive Shells**: Requires explicit `[y/N]` user confirmation.
+> - **Non-Interactive / Scripts / Agents**: Requires `--force` / `-f` (aborts with exit code `1` if omitted).
+> - **Automatic Backup**: Every clear automatically snapshots the pending queue to `~/.gsc/backups/queue_backup_<TIMESTAMP>.json` before wiping, so URLs are never lost.
 
 ### 6. Keyword Research & Demand Trends
 | Command | Shortcut | Description | Flags |

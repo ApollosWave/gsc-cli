@@ -134,6 +134,10 @@ module GSC
           options[:batch_size] = size
         end
 
+        opts.on('-f', '--force', '--yes', '-y', 'Bypass confirmation prompts (required for non-interactive queue clears)') do
+          options[:force] = true
+        end
+
         opts.on('--concurrency COUNT', Integer, 'Concurrent threads for multi-page site crawler (default: 5, max: 20)') do |c|
           options[:concurrency] = c
         end
@@ -790,6 +794,14 @@ module GSC
         Audit.run(command, target, extra, options)
         exit 0 unless options[:in_dashboard]
         return
+
+      when 'index-batch', 'queue', 'batch-index'
+        action = target.to_s.strip.downcase
+        if action != 'run' && action != 'process' && action != 'execute'
+          Indexing.run(command, target, extra, options, nil, nil, nil, nil)
+          exit 0 unless options[:in_dashboard]
+          return
+        end
       end
 
       # 7. Authenticated Commands (GSC / Indexing / Analytics / GA4)

@@ -9,7 +9,13 @@ module GSC
     CONFIG_DIR  = File.expand_path('~/.config/gsc')
     CONFIG_FILE = File.join(CONFIG_DIR, 'config.json')
 
-def self.get(key)
+    def self.ensure_gsc_symlink!
+      gsc_dir = File.expand_path('~/.gsc')
+      return if File.exist?(gsc_dir) || File.symlink?(gsc_dir)
+      File.symlink(CONFIG_DIR, gsc_dir) rescue nil
+    end
+
+    def self.get(key)
   load[key.to_s]
 end
 
