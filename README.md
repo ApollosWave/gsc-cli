@@ -722,24 +722,15 @@ rake install:standalone
 
 ---
 
-## 💖 Sponsorship & Backing
+## 💖 Sponsoring gsc-cli
 
-`gsc-cli` is free, open-source software built to eliminate predatory monthly subscriptions for indie developers, founders, and AI builders.
+`gsc-cli` is 100% free, MIT-licensed open-source software built to eliminate expensive recurring SaaS fees for developers, teams, and AI builders.
 
-If GSC CLI saves your team hours of manual audit work or hundreds in monthly SaaS fees, consider backing continuous development:
+If `gsc-cli` saves your team hours of manual audit work or monthly subscriptions, consider supporting continuous maintenance:
 
-| Tier | Monthly | Perks | Sponsorship Link |
-| :--- | :--- | :--- | :--- |
-| **Community Supporter** | **$10 / mo** | Name in README Backers list + Discord/GitHub badge | [**Sponsor $10/mo**](https://buy.stripe.com/fZu6oG4Qz1EucVT4ygbAs00) |
-| **Backer** | **$50 / mo** | Name + link in Backers section + priority issue triage | [**Sponsor $50/mo**](https://buy.stripe.com/7sY00ier91Eu5tr0i0bAs01) |
-| **Agency Partner** | **$100 / mo** | Small logo/link in Agency Backers gallery + priority triage | [**Sponsor $100/mo**](https://buy.stripe.com/6oU9AS1Engzog853ucbAs02) |
-| **Bronze Sponsor** | **$500 / mo** | Medium logo with dofollow backlink in README & docs | [**Sponsor $500/mo**](https://buy.stripe.com/eVqdR882LgzobRP9SAbAs03) |
-| **Silver Sponsor** | **$1,500 / mo** | Large logo on top fold + monthly feature priority request | [**Sponsor $1,500/mo**](https://buy.stripe.com/8x2aEWbeX2IybRP1m4bAs04) |
-| **Gold Title Sponsor** | **$2,500 / mo** | Title banner at top of README + 1h monthly consulting | [**Sponsor $2,500/mo**](https://buy.stripe.com/cNi7sK4Qz6YOaNL3ucbAs05) |
+- ☕ **[Recurring Sponsorship from $10/mo via Stripe](https://buy.stripe.com/fZu6oG4Qz1EucVT4ygbAs00)**
 
-> *All sponsorships are processed securely via **Stripe** by ApollosWave LLC. Invoices with company VAT / Business Tax ID provided automatically upon checkout.*
-
-👉 **[Read the Full Sponsorship Prospectus & Tier Breakdown →](FUNDING.md)**
+👉 **[View our Full Sponsorship Tiers & Company Invoicing Details →](FUNDING.md)**
 
 ---
 
