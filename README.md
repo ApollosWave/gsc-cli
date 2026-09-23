@@ -20,10 +20,10 @@
 
 > *Actual Google Search Console data from production domains audited, indexed, and scaled via `gsc-cli`.*
 
-| 🚀 Automated Indexation Turnaround (0 → 3,897 Pages) | 🤖 Google AI Overview (AIO) Capture (3.53K Imp) |
+| 🚀 Automated Indexation Turnaround (+380% in 3 Weeks) | 🤖 Google AI Overview (AIO) Capture (3.53K Imp) |
 | :---: | :---: |
 | [![Google Search Console Indexing Surge](assets/gsc-indexing-surge.png)](assets/gsc-indexing-surge.png) | [![Google AI Overviews Beta Impressions](assets/gsc-generative-ai-impressions.png)](assets/gsc-generative-ai-impressions.png) |
-| **3,897 Pages Successfully Indexed**<br>Unindexed backlog resolved using `gsc inspect-sitemap`, priority Googlebot Indexing API pings, and automated soft-404 redirects. | **3,530+ AI Overview Impressions**<br>Citation visibility in Google's new Generative AI search features tracked and captured via `gsc aio-hunter` & `gsc cite-sim`. |
+| **3,897 Pages Successfully Indexed (+380% Surge)**<br>Stalled at ~800 pages with 4,500 unindexed for months until automated sitemap inspection (`gsc inspect-sitemap`), soft-404 fixes, and priority Googlebot queueing broke the crawl deadlock in late August / September. | **3,530+ AI Overview Impressions**<br>Citation visibility in Google's new Generative AI search features tracked and captured via `gsc aio-hunter` & `gsc cite-sim`. |
 
 ---
 
@@ -250,7 +250,7 @@ Waiting days or weeks for Googlebot to discover new landing pages or updated doc
 
 <p align="center">
   <a href="assets/gsc-indexing-surge.png"><img src="assets/gsc-indexing-surge.png" alt="Google Search Console Indexing Surge: 3,897 Indexed Pages" width="92%" /></a>
-  <br><em>Production turnaround: Surging from 0 to 3,897 indexed pages while clearing out 3,300+ unindexed backlog errors via automated inspection and indexing loops.</em>
+  <br><em>Production turnaround: Stalled at ~800 pages with 4.5K unindexed for months, then surging to 3,897 indexed pages in 3 weeks (+380%) while clearing out 3,300+ unindexed backlog errors via automated inspection and indexing loops.</em>
 </p>
 
 ```bash
