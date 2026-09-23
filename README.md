@@ -16,6 +16,17 @@
 
 ---
 
+## 📊 Real-World Production Impact: Ground Truth at Scale
+
+> *Actual Google Search Console data from production domains audited, indexed, and scaled via `gsc-cli`.*
+
+| 🚀 Automated Indexation Turnaround (0 → 3,897 Pages) | 🤖 Google AI Overview (AIO) Capture (3.53K Imp) |
+| :---: | :---: |
+| [![Google Search Console Indexing Surge](assets/gsc-indexing-surge.png)](assets/gsc-indexing-surge.png) | [![Google AI Overviews Beta Impressions](assets/gsc-generative-ai-impressions.png)](assets/gsc-generative-ai-impressions.png) |
+| **3,897 Pages Successfully Indexed**<br>Unindexed backlog resolved using `gsc inspect-sitemap`, priority Googlebot Indexing API pings, and automated soft-404 redirects. | **3,530+ AI Overview Impressions**<br>Citation visibility in Google's new Generative AI search features tracked and captured via `gsc aio-hunter` & `gsc cite-sim`. |
+
+---
+
 ## ⚡ Why We Built This: Escaping the 40-Gem Tax
 
 Every software engineer, technical SEO, and developer-operator managing search presence faces the exact same architectural frustrations:
@@ -237,6 +248,11 @@ Waiting days or weeks for Googlebot to discover new landing pages or updated doc
 #### The Solution
 `gsc-cli` communicates directly with Google's Indexing API and live URL Inspection API to check status and force priority crawling in seconds:
 
+<p align="center">
+  <a href="assets/gsc-indexing-surge.png"><img src="assets/gsc-indexing-surge.png" alt="Google Search Console Indexing Surge: 3,897 Indexed Pages" width="92%" /></a>
+  <br><em>Production turnaround: Surging from 0 to 3,897 indexed pages while clearing out 3,300+ unindexed backlog errors via automated inspection and indexing loops.</em>
+</p>
+
 ```bash
 # Query live Google indexing verdict, assigned canonical, and crawl timestamp
 gsc inspect https://example.com/blog/core-web-vitals
@@ -324,6 +340,11 @@ Google AI Overviews (Gemini in search results) intercept high-intent queries bef
 
 #### The Solution
 `gsc aio-hunter` scans live SERPs for AI Overviews, extracts cited sources, and measures your citation readiness:
+
+<p align="center">
+  <a href="assets/gsc-generative-ai-impressions.png"><img src="assets/gsc-generative-ai-impressions.png" alt="Google Search Console Generative AI Features Beta: 3.53K Impressions" width="92%" /></a>
+  <br><em>Production impact: Capturing over 3,500 impressions directly inside Google Search Console's new Generative AI features (Beta) report.</em>
+</p>
 
 ```bash
 # Hunt AI Overview presence and extract cited competitor sources
