@@ -1,4 +1,4 @@
-# 🚀 GSC-CLI: The Zero-Gem Google Search Console & Technical SEO Engine
+# GSC CLI. Zero dependencies. Pure search intelligence.
 
 [![Ruby](https://img.shields.io/badge/Ruby-3.0%2B-red.svg?logo=ruby&logoColor=white)](https://www.ruby-lang.org)
 [![Gem Version](https://img.shields.io/gem/v/gsc-cli.svg?label=Gem%20Version&logo=rubygems)](https://rubygems.org/gems/gsc-cli)
@@ -6,28 +6,28 @@
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20gems-brightgreen.svg)](#)
 [![Cold Boot](https://img.shields.io/badge/cold%20boot-%3C15ms-blue)](lib/gsc/cli.rb)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Commands](https://img.shields.io/badge/commands-80%20production-orange.svg)](#-complete-cli-command-reference-80-commands)
+[![Commands](https://img.shields.io/badge/commands-80%20production-orange.svg)](#complete-cli-command-reference-80-commands)
 [![Security: AES-256-GCM](https://img.shields.io/badge/Vault-AES--256--GCM-blueviolet.svg)](#8-agency-credential-vault-gsc-vault)
-[![AI Agent Native](https://img.shields.io/badge/AI%20Agent-Native%20Skill-purple.svg)](#-ai-agent-native-integration-antigravity-claude-cursor)
+[![AI Agent Native](https://img.shields.io/badge/AI%20Agent-Native%20Skill-purple.svg)](#ai-agent-native-integration-antigravity-claude-cursor)
 [![GitHub Stars](https://img.shields.io/github/stars/ApollosWave/gsc-cli?style=social)](https://github.com/ApollosWave/gsc-cli)
 
-> ⚡ **Zero runtime gems. Pure Ruby standard library (`Net::HTTP`, `OpenSSL`, `JSON`).**  
+> **Zero runtime gems. Pure Ruby standard library (`Net::HTTP`, `OpenSSL`, `JSON`).**  
 > Cold-boots in **~15ms** with **371 test suites, 1,991 assertions, and 0 failures** across Ruby 3.0 through 3.4. Extract first-party Google rankings, automate technical SEO audits, and manage Googlebot indexing without bloated SDK dependencies.
 
 ---
 
-## 📊 Real-World Production Impact: Ground Truth at Scale
+## Real-World Production Impact: Ground Truth at Scale
 
 > *Actual Google Search Console data from production domains audited, indexed, and scaled via `gsc-cli`.*
 
-| 🚀 Automated Indexation Turnaround (+380% in 3 Weeks) | 🤖 Google AI Overview (AIO) Capture (3.53K Imp) |
+| Automated Indexation (+380% in 3 Weeks) | AI Overview Capture (3.53K Impressions) |
 | :---: | :---: |
 | [![Google Search Console Indexing Surge](assets/gsc-indexing-surge.png)](assets/gsc-indexing-surge.png) | [![Google AI Overviews Beta Impressions](assets/gsc-generative-ai-impressions.png)](assets/gsc-generative-ai-impressions.png) |
-| **3,897 Pages Successfully Indexed (+380% Surge)**<br>Stalled at ~800 pages with 4,500 unindexed for months until automated sitemap inspection (`gsc inspect-sitemap`), soft-404 fixes, and priority Googlebot queueing broke the crawl deadlock in late August / September. | **3,530+ AI Overview Impressions**<br>Citation visibility in Google's new Generative AI search features tracked and captured via `gsc aio-hunter` & `gsc cite-sim`. |
+| **3,897 Pages Indexed (+380% Surge)**<br>Stalled at ~800 pages for months until automated sitemap inspection (`gsc inspect-sitemap`), soft-404 fixes, and priority queueing broke the crawl deadlock. | **3,530+ AI Overview Impressions**<br>Tracked and captured live visibility in Google's new Generative AI search features using citation gap analysis (`gsc aio-hunter`) and structure scoring (`gsc cite-sim`). |
 
 ---
 
-## ⚡ Why We Built This: Escaping the 40-Gem Tax
+## Why We Built This: Escaping the 40-Gem Tax
 
 Every software engineer, technical SEO, and developer-operator managing search presence faces the exact same architectural frustrations:
 
